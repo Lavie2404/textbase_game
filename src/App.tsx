@@ -1,4 +1,3 @@
-// @ts-nocheck
 //Đây là code của tôi viết trên google canvas để tạo ứng dụng.
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo  } from 'react';
 import { GAME_CONFIG } from './gameConfig.js';
@@ -7436,7 +7435,8 @@ const SettingsMenu = ({
     show, onClose, onSaveToLocal, onSaveToCloud, onLoadFromCloud, onSaveToFile, onLoadFromFile, onRestart, onGoHome, onClearCache, currentPlayStyle, onTogglePlayStyle, uiTheme, onSetTheme, onOpenThemeEditor,
     bgmUrl, bgmVolume, isPlayingBgm, onBgmUrlChange, onBgmVolumeChange, onToggleBgm, onOpenCacheManager, onOpenGallery,
     onDebugAwakenHtab, gameMode,
-    textScale, onTextScaleChange 
+    textScale, onTextScaleChange,
+    gameSettings, setGameSettings
 }) => {
 
     const [showThemeList, setShowThemeList] = useState(false);
@@ -14306,6 +14306,7 @@ class ApiQueueManager {
 const globalApiQueue = new ApiQueueManager();
 
 const generateSystemAssistantPose = async (poseDesc, baseImageBase64, effectiveApiKey) => {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${effectiveApiKey}`;
     const prompt = `Redraw this character with the expression, emotion, and dynamic pose: ${poseDesc}. 
     Maintain the exact same character features (such as hair color, eye color, clothing style, and facial features) as the reference image, but allow changing the head tilt, body posture, and hand gestures to vividly match the described emotion.
     CRITICAL COLOR RULES (CHROMA KEY):
@@ -14323,42 +14324,27 @@ const generateSystemAssistantPose = async (poseDesc, baseImageBase64, effectiveA
     };
 
     const executePoseFetch = async () => {
-        const IMAGE_MODELS = [
-            "gemini-3.1-flash-image",
-            "gemini-3.1-flash-lite-image",
-            "gemini-3.1-flash-image-preview",
-            "gemini-3-pro-image"
-        ];
-        let lastError = null;
-        for (const model of IMAGE_MODELS) {
-            try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${effectiveApiKey}`;
-                console.log(`[VẼ HTAB] Đang thử model: ${model}`);
-                const response = await fetch(url, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(payload) 
-                });
-                if (response.ok) {
-                    const res = await response.json();
-                    const b64 = res.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || res.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-                    if (b64) {
-                        console.log(`[VẼ HTAB] Thành công với model: ${model}`);
-                        const processed = await processSystemAssistantSprite(`data:image/png;base64,${b64}`);
-                        return processed;
-                    }
-                } else {
-                    const errText = await response.text();
-                    console.warn(`[VẼ HTAB] Model ${model} thất bại:`, errText);
-                    let errJson = null;
-                    try { errJson = JSON.parse(errText); } catch (_) {}
-                    lastError = new Error(translateGeminiApiError(errJson, response.status));
-                }
-            } catch (e) {
-                lastError = e;
-            }
+        const response = await fetch(url, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            let errJson = null;
+            try { errJson = JSON.parse(errText); } catch (_) {}
+            throw new Error(translateGeminiApiError(errJson, response.status));
         }
-        throw lastError || new Error("Không thể vẽ htab.");
+
+        const res = await response.json();
+        const b64 = res.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || res.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+        
+        if (b64) {
+            const processed = await processSystemAssistantSprite(`data:image/png;base64,${b64}`);
+            return processed;
+        }
+        return null;
     };
 
     try {
@@ -14506,50 +14492,37 @@ const buildAvatarPrompt = (character, gameSettings) => {
 };
 
 const generateSingleImage = async (promptText, effectiveApiKey) => {
-    console.log("Đang gọi API Gemini cho NHÂN VẬT với prompt:", promptText); 
+    console.log("Đang gọi API Gemini 3.1 Flash cho NHÂN VẬT với prompt:", promptText); 
     
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${effectiveApiKey}`;
     const payload = {
         contents: [{ role: "user", parts: [{ text: `Generate an image: ${promptText}` }] }],
         generationConfig: { responseModalities: ["IMAGE"] }
     };
     
+    // BỌC VÀO HÀNG CHỜ ĐỂ TRÁNH LỖI 429
     const executeImageFetch = async () => {
-        const IMAGE_MODELS = [
-            "gemini-3.1-flash-image",
-            "gemini-3.1-flash-lite-image",
-            "gemini-3.1-flash-image-preview",
-            "gemini-3-pro-image"
-        ];
-        let lastError = null;
-        for (const model of IMAGE_MODELS) {
-            try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${effectiveApiKey}`;
-                console.log(`[VẼ NHÂN VẬT] Đang thử model: ${model}`);
-                const response = await fetch(url, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(payload) 
-                });
-                if (response.ok) {
-                    const result = await response.json();
-                    const base64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data ||
-                                   result.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-                    if (base64) {
-                        console.log(`Tạo Ảnh Nhân Vật THÀNH CÔNG với model: ${model}`);
-                        return `data:image/jpeg;base64,${base64}`;
-                    }
-                } else {
-                    const errText = await response.text();
-                    console.warn(`Model ${model} thất bại:`, errText);
-                    let errJson = null;
-                    try { errJson = JSON.parse(errText); } catch (_) {}
-                    lastError = new Error(translateGeminiApiError(errJson, response.status));
-                }
-            } catch (e) {
-                lastError = e;
-            }
+        const response = await fetch(apiUrl, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+        });
+        
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error("Lỗi API Gemini 3.1 (Nhân Vật):", errText);
+            let errJson = null;
+            try { errJson = JSON.parse(errText); } catch (_) {}
+            throw new Error(translateGeminiApiError(errJson, response.status));
         }
-        throw lastError || new Error("Không có dữ liệu ảnh trả về từ AI.");
+        
+        const result = await response.json();
+        const base64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+        
+        if (!base64) throw new Error("Không có dữ liệu ảnh trả về từ AI.");
+        
+        console.log("Tạo Ảnh Nhân Vật THÀNH CÔNG!");
+        return `data:image/jpeg;base64,${base64}`;
     };
 
     return globalApiQueue.enqueue(executeImageFetch);
@@ -16712,6 +16685,7 @@ const INITIAL_GAME_SETTINGS = {
     difficulty: 'Thường',
     difficultydescription: '',
     allowNsfw: false,
+    customNsfwText: '',
     isNsfwMode: false,
     enableParasiticSystem: false,
     initialWorldElements: [],
@@ -19401,49 +19375,33 @@ const [activeTrade, setActiveTrade] = useState({
 const generateCombatEnvironment = async (bgPrompt, effectiveApiKey) => {
     if (!bgPrompt) return null;
 
-    console.log("Đang gọi API Gemini cho CẢNH NỀN với prompt:", bgPrompt);
+    console.log("Đang gọi API Gemini 3.1 Flash cho CẢNH NỀN với prompt:", bgPrompt);
 
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${effectiveApiKey}`;
     const finalPrompt = `Generate an image: ${bgPrompt}. Masterpiece 2D flat game art, side-scrolling RPG arena. Zero perspective depth. CRITICAL: The bottom 40% to 50% of the image MUST be a solid, flat, walkable ground floor texture. The top part is the background scenery. Clear horizontal horizon. (NO text, NO words, NO watermarks, NO borders, NO vignette, NO white edges, NO UI, NO characters).`;
     const payload = {
         contents: [{ role: "user", parts: [{ text: finalPrompt }] }],
         generationConfig: { responseModalities: ["IMAGE"] } 
     };
     
+    // BỌC VÀO HÀNG CHỜ
     const executeBgFetch = async () => {
-        const IMAGE_MODELS = [
-            "gemini-3.1-flash-image",
-            "gemini-3.1-flash-lite-image",
-            "gemini-3.1-flash-image-preview",
-            "gemini-3-pro-image"
-        ];
-        let lastError = null;
-        for (const model of IMAGE_MODELS) {
-            try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${effectiveApiKey}`;
-                console.log(`[VẼ NỀN COMBAT] Đang thử model: ${model}`);
-                const response = await fetch(url, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(payload) 
-                });
-                if (response.ok) {
-                    const stageData = await response.json();
-                    const base64 = stageData.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data ||
-                                   stageData.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-                    if (base64) {
-                        console.log(`Tạo Ảnh Nền THÀNH CÔNG với model: ${model}`);
-                        return `data:image/jpeg;base64,${base64}`;
-                    }
-                } else {
-                    const errText = await response.text();
-                    console.warn(`Model ${model} thất bại:`, errText);
-                    lastError = new Error(errText);
-                }
-            } catch (e) {
-                lastError = e;
-            }
+        const stageRes = await fetch(apiUrl, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+        });
+
+        if (!stageRes.ok) throw new Error("Gemini API lỗi");
+        
+        const stageData = await stageRes.json();
+        const base64 = stageData.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+        
+        if (base64) {
+            console.log("Tạo Ảnh Nền THÀNH CÔNG!");
+            return `data:image/jpeg;base64,${base64}`;
         }
-        throw lastError || new Error("Không thể tạo nền combat.");
+        return null;
     };
 
     try {
@@ -23557,6 +23515,7 @@ const processSprite = (base64Str, normalizedBaseMass = null, isSkill = false) =>
 
 
 const generateSpecificPose = async (poseDesc, baseImageBase64, baseMass, effectiveApiKey, isSkill = false) => {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${effectiveApiKey}`;
     const prompt = `Generate an image: Redraw the character EXACTLY FACING RIGHT in pose: ${poseDesc}. 2D hand-drawn turn-based RPG game asset. Crisp flat art style. EXTREMELY IMPORTANT: ONLY ONE single character centered in the frame. DO NOT draw multiple characters. DO NOT draw duplicate characters side-by-side. NO sprite sheets, NO comparisons. PURE SOLID #FFFFFF WHITE BACKGROUND ONLY. DO NOT USE BLACK OR DARK BACKGROUNDS. CLEAR DAYLIGHT LIGHTING. NO SCENERY. NO 3D RENDER. CRITICAL INSTRUCTION: Maintain exact same body proportions and character design as the reference image.`;
     
     const payload = { 
@@ -23568,43 +23527,27 @@ const generateSpecificPose = async (poseDesc, baseImageBase64, baseMass, effecti
     };
     
     const executePoseFetch = async () => {
-        const IMAGE_MODELS = [
-            "gemini-3.1-flash-image",
-            "gemini-3.1-flash-lite-image",
-            "gemini-3.1-flash-image-preview",
-            "gemini-3-pro-image"
-        ];
-        let lastError = null;
-        for (const model of IMAGE_MODELS) {
-            try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${effectiveApiKey}`;
-                console.log(`[BẺ DÁNG SPRITE] Đang thử model: ${model}`);
-                const response = await fetch(url, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(payload) 
-                });
-                if (response.ok) {
-                    const res = await response.json();
-                    const b64 = res.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data ||
-                                res.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-                    if (b64) {
-                        console.log(`[BẺ DÁNG SPRITE] Thành công với model: ${model}`);
-                        const processed = await processSprite(`data:image/png;base64,${b64}`, baseMass, isSkill);
-                        return processed.url;
-                    }
-                } else {
-                    const errText = await response.text();
-                    console.warn(`Model ${model} thất bại:`, errText);
-                    let errJson = null;
-                    try { errJson = JSON.parse(errText); } catch (_) {}
-                    lastError = new Error(translateGeminiApiError(errJson, response.status));
-                }
-            } catch (e) {
-                lastError = e;
-            }
+        const response = await fetch(url, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            let errJson = null;
+            try { errJson = JSON.parse(errText); } catch (_) {}
+            throw new Error(translateGeminiApiError(errJson, response.status));
         }
-        throw lastError || new Error("Không thể bẻ dáng sprite.");
+
+        const res = await response.json();
+        const b64 = res.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+
+        if (b64) {
+            const processed = await processSprite(`data:image/png;base64,${b64}`, baseMass, isSkill);
+            return processed.url;
+        }
+        return null;
     };
 
     try {
@@ -26362,6 +26305,22 @@ const handleRecruitCompanion = (characterId) => {
     });
 };
 
+const getDefaultNsfwText = () => {
+    return `Ngay khi cánh cửa phòng khép lại, bầu không khí tĩnh mịch lập tức bị đốt cháy bởi hơi thở rực lửa dồn dập. Ngươi không kìm nén thêm được nữa, tiến tới xoay người [npc.Name] lại, kéo sát nàng vào lồng ngực săn chắc ấm nóng của mình. Hai thân hình dán chặt vào nhau không một kẽ hở qua lớp xiêm y mỏng manh. Ngươi cúi đầu, ghì chặt gáy nàng và dâng hiến một nụ hôn nồng cháy, điên cuồng ngấu nghiến đôi môi đào mềm mại. Lưỡi ngươi chủ động cạy mở hàm răng ngọc, quấn lấy chiếc lưỡi thơm tho, ẩm ướt đầy gợi dục của nàng, mút mát thèm khát tiếng rên rỉ ngọt ngào râm ran trong cổ họng nàng.
+
+Trong lúc nụ hôn sâu làm nàng choáng váng đầu óc, bàn tay thô ráp của ngươi dời xuống, lách qua thắt lưng tơ lụa mỏng manh rủ xuống chân, luồn vào trong lột phăng xiêm y của cả hai, để lộ hai nhục thể trần trụi quấn lấy nhau dưới ánh nến mờ ảo. Ánh mắt ngươi rực lửa dục vọng dán chặt vào đôi gò bồng đảo (vú) căng tròn tuyết trắng nhô cao, đỉnh hồng nhuận đang run rẩy vì hơi lạnh và hưng phấn. Ngươi thô bạo nhưng đầy đê mê thò tay bóp mạnh hai bầu vú mềm mại của nàng, nắn bóp nồng nhiệt thành đủ loại hình dạng đầy khiêu gợi, cảm nhận sự đàn hồi ấm nóng tột đỉnh khiến nàng ưỡn cong người, đôi môi hé mở phát ra những tiếng rên rỉ dâm mỹ kiều mị đầy kích thích.
+
+Không dừng lại ở đó, tay ngươi vuốt ve dọc theo những đường cong mê người, mơn trớn làn da mịn màng như mỡ đông rồi trượt xuống bắp đùi thon thả, tiến thẳng vào vùng cấm địa sâu kín giữa hai chân nàng. Ngón tay ngươi chạm vào khe lồn (âm đạo) ẩm ướt, mơn trớn những nếp gấp mềm mại của mép lồn chứa chan mật thủy dâm đãng đang không ngừng rỉ ra ướt đẫm. Khi ngón tay ngươi khẽ tách hai cánh môi âm hộ ra và thọc sâu vào lỗ âm đạo mút mát chặt chẽ đầy ấm nóng, [npc.Name] run rẩy dữ dội, hai tay ôm ghì lấy cổ ngươi rên rỉ thất thanh: "Áh... ưm... sâu quá... ư... sướng..."
+
+Dục vọng nguyên thủy dâng trào tột đỉnh, dương vật (cu, cặc) của ngươi đã cương cứng nóng bỏng, trướng to đến mức nổi đầy gân xanh cuồn cuộn. Ngươi bế thốc nàng lên, bắt nàng dạng rộng hai chân vòng qua hông mình, rồi nhắm thẳng vào khe lồn đỏ hồng đầm đìa nước nôi dâm đãng mà đâm mạnh một cú lút cán. Dương vật to nóng như thanh sắt nung đỏ thọc sâu ngập lụt vào tận đáy âm đạo, phá vỡ mọi phòng ngự, trực tiếp va chạm cuồng nhiệt vào tử cung mềm mại bên trong. [npc.Name] hét lên một tiếng đầy sung sướng đê mê, khoái cảm cực độ ập đến như sóng thần khiến nàng run bần bật, lỗ hậu môn (lỗ đít, lỗ hậu) co thắt điên cuồng đầy kích thích.
+
+Ngươi bắt đầu luật động cuồng nhiệt, dùng lực hông dồn dập dập mạnh dương vật ra vào lỗ lồn ấm nóng. Tiếng va chạm da thịt "bạch bạch bạch" vang dội liên hồi hòa quyện cùng tiếng nước dâm thủy lép nhép dâm mỹ phát ra từ nơi giao hợp. Ngươi đổi sang tư thế bắt nàng quỳ sấp, nhổm mông tròn lẳng ra phía sau, phơi bày toàn bộ khe lồn đỏ rực và lỗ hậu môn nhỏ nhắn sẫm màu kích thích cực hạn. Ngươi nắm chặt eo nàng, từ phía sau đâm mạnh cặc vào sâu hoắm trong âm đạo, mỗi một cú thúc dập đều cắm lút gốc khiến hai bầu vú nàng lắc lư điên cuồng trước ngực. Nàng gục đầu xuống gối rên rỉ rên la dâm đãng: "Ôi cặc to quá... đâm chết thiếp rồi... ưm... cu bự thúc sâu quá... áhh..."
+
+Nhịp điệu dập cặc càng lúc càng điên cuồng gấp gáp, mồ hôi đầm đìa hòa quyện giữa hai thân thể trần trụi nồng nặc mùi hoan lạc dâm dục. Chân khí âm dương lúc này luân chuyển điên cuồng cuồn cuộn qua kinh mạch đả thông các huyệt đạo giao hòa mãnh liệt. Khi đạt đến đỉnh điểm của sự sung sướng nhục dục cực hạn, dương vật ngươi giật giật dữ dội thọc sâu vào tận cùng âm đạo nàng, bắn ra những luồng tinh dịch (bắn tinh) nóng hổi, đậm đặc, phun thẳng vào sâu trong tử cung ấm áp của nàng. [npc.Name] thăng hoa tột cùng, lỗ lồn co bóp kẹp chặt lấy cặc ngươi điên cuồng, nàng rên rỉ kiệt sức đổ gục trong vòng tay ngươi, tận hưởng dư vị sung sướng, đê mê của cuộc mây mưa trần trụi cuồng nhiệt nhất thế gian.`;
+};
+
+const SONG_TU_TITLE = "Đạo Lữ";
+
 // Song Tu cùng một NPC. Yêu cầu Hảo Cảm >= 80. Không giới hạn số lần.
 // Luôn tăng Hảo Cảm; lần đầu tiên mở khóa danh xưng "Đạo Lữ"; có xác suất nhỏ mở khóa thêm kỹ năng hoặc một đoạn cốt truyện.
 const handleSongTu = async (characterId) => {
@@ -26375,17 +26334,36 @@ const handleSongTu = async (characterId) => {
     const isFirstTime = !(npc.titles || []).includes(SONG_TU_TITLE);
     const affinityGain = 10;
     const rollSkill = Math.random() < 0.05;
-    const rollStory = !rollSkill && Math.random() < 0.05;
+    const rollStory = !rollSkill && Math.random() < 0.15;
 
     setIsProcessingAction(true);
 
     let storySnippet = null;
-    if (rollStory) {
-        const prompt = `Viết một đoạn tường thuật ngắn (3-4 câu), văn phong tiểu thuyết mạng Tiếng Việt, mô tả cảnh nhân vật chính cùng "${npc.Name}" (${npc.Personality || 'tính cách bí ẩn'}) song tu, đả thông kinh mạch, tăng tiến đạo lữ. Trong lúc song tu, hé lộ một chi tiết nhỏ, bất ngờ về quá khứ hoặc bí mật của "${npc.Name}" mà nhân vật chính chưa từng biết, không lặp lại chi tiết đã có. Chỉ trả về đoạn văn, không giải thích thêm, không dùng markdown.`;
+    const isNsfw = gameSettings.allowNsfw;
+    
+    if (isNsfw) {
+        setModalMessage({ show: true, title: "Đang Song Tu...", content: `Ngươi đang ôm khít lấy [${npc.Name}], lột bỏ xiêm y, cùng nhục thân hòa quyện song tu...`, type: "info" });
+        const npcName = npc.Name;
+        let customText = gameSettings.customNsfwText || "";
+        if (!customText.trim()) {
+            customText = getDefaultNsfwText();
+        }
+        storySnippet = customText.replace(/Đạo Lữ/g, npcName).replace(/\[npc\.Name\]/g, npcName).replace(/\[npcName\]/g, npcName);
+    } else {
+        const prompt = `Viết một đoạn tường thuật chi tiết, đậm chất văn phong tiểu thuyết mạng tu tiên Tiếng Việt hoành tráng và lãng mạn, mô tả quá trình song tu giữa nhân vật chính (người chơi) and đạo lữ "${npc.Name}" (Tính cách: ${npc.Personality || "bí ẩn, sâu sắc"}, Ngoại hình: ${npc.Appearance || "thanh tao"}, Cảnh giới/Level: ${npc.level || 1}).
+Yêu cầu mô tả sự giao hòa của linh lực giữa hai người, chân khí luân chuyển qua kinh mạch, đả thông các huyệt đạo, cảm xúc dâng trào và sự cộng hưởng tâm linh sâu sắc.`;
+
+        const finalPrompt = prompt + "\n" + (rollStory ? `Đặc biệt, trong khoảnh khắc song tu thể xác giao hòa cực kỳ sâu sắc này, hãy hé lộ một chi tiết nhỏ, bất ngờ hoặc một bí mật sâu kín về quá khứ hoặc xuất thân của "${npc.Name}" mà nhân vật chính phát hiện qua ký ức thần thức của đối phương.` : "") + "\nHãy viết thật lôi cuốn, chi tiết từ 4 đến 6 câu dài theo văn phong tiểu thuyết mạng sắc hiệp/tu tiên Tiếng Việt cực kỳ hoa mỹ. Chỉ trả về duy nhất đoạn văn tường thuật đó, không giải thích thêm, không dùng markdown hay tiêu đề nào khác.";
+
         try {
-            storySnippet = await fetchGenericGeminiText(prompt);
+            setModalMessage({ show: true, title: "Đang Song Tu...", content: `Ngươi đang cùng [${npc.Name}] bước vào trạng thái song tu, thần hồn giao hòa, linh khí luân chuyển...`, type: "info" });
+            storySnippet = await fetchGenericGeminiText(finalPrompt);
         } catch (e) {
             console.error("Lỗi khi tạo cốt truyện Song Tu:", e);
+        }
+
+        if (!storySnippet) {
+            storySnippet = `Hai người ngồi xếp bằng đối diện, bốn bàn tay đan vào nhau một cách dịu dàng. Chân khí trong cơ thể bắt đầu vận chuyển theo chu thiên, linh lực hai bên chạm nhau rồi hòa quyện làm một thể thống nhất. Linh lực của ${npc.Name} ấm áp như ngọc ôn nhuận, nhẹ nhàng dẫn dắt khí hải của ngươi khai mở, cuốn trôi đi những tạp chất và đả thông linh mạch toàn thân. Trong phút chốc, thần hồn hai bên cộng hưởng sâu sắc, linh đài thanh tịnh, cảm giác ấm áp và gắn kết vô hình ngập tràn tâm trí cả hai, đẩy lùi mọi kiếp nạn trần thế.`;
         }
     }
 
@@ -26424,7 +26402,7 @@ const handleSongTu = async (characterId) => {
     const parts = [`Hảo Cảm với ${npc.Name} tăng thêm ${affinityGain} điểm.`];
     if (isFirstTime) parts.push(`Mở khóa danh xưng "${SONG_TU_TITLE}"!`);
     if (rollSkill) parts.push(`Đạo lữ đã giúp ngươi lĩnh ngộ được một kỹ năng mới!`);
-    if (storySnippet) parts.push(`Một đoạn cốt truyện mới đã được mở khóa.`);
+    if (storySnippet) parts.push(`Một đoạn cốt truyện song tu chi tiết đã được khắc ghi vào nhật ký phiêu lưu.`);
 
     setModalMessage({ show: true, title: "Song Tu Viên Mãn", content: parts.join('\n'), type: "success" });
 };
@@ -32343,89 +32321,4 @@ const findLoreEntity = (name, knowledge, playerCharacter) => {
     found = findInArray(knowledge.worldItems || []);
     if (found) return { data: found, type: 'Vật phẩm' };
 
-    found = findInArray(knowledge.loreSkills || [], ['Name', 'name']);
-    if (found) return { data: found, type: 'Kỹ năng' };
-
-    found = findInArray(knowledge.loreQuests || [], ['title']);
-    if (found) return { data: found, type: 'Nhiệm vụ' };
-
-    found = findInArray(knowledge.loreNpcs || [], ['Name', 'name']);
-    if (found) return { data: found, type: 'NPC' };
-
-    found = findInArray(knowledge.loreLocations || [], ['Name', 'name']);
-    if (found) return { data: found, type: 'Địa điểm' };
-
-    return null;
-};
-
-const formatEntityForPrompt = (entityInfo) => {
-    if (!entityInfo || !entityInfo.data) return "";
-    const { type, data } = entityInfo;
-    let details = `- [${type}] ${data.Name || data.name || data.title}`;
-    if (data.description) details += `: "${data.description}"`;
-    else if (data.Backstory) details += `: "${data.Backstory}"`;
-
-    if (type === 'NPC') {
-        details += ` (Cấp ${data.level || 1}, Thái độ: ${data.Stance || 'Trung lập'}, Tính cách: ${data.Personality || 'Bình thường'}`;
-        if (data.Role) details += `, Thân phận: ${data.Role}`;
-        details += `)`;
-    } else if (type === 'Địa điểm') {
-        details += ` (Phân loại: ${data.category || 'Địa điểm'}, Cấp phả hệ: ${data.tier || 1})`;
-    } else if (type === 'Vật phẩm') {
-        details += ` (Loại: ${data.Type}, Phẩm chất: ${data.Rarity || 'Thường'}, Giá trị: ${data.Value || 0}`;
-        if (data.Stats) details += `, Chỉ số: ${data.Stats}`;
-        details += `)`;
-    } else if (type === 'Kỹ năng') {
-        details += ` (Loại: ${data.skillType === 'combat' ? 'Chiến đấu' : 'Phiêu lưu'}, Phẩm chất: ${data.Rarity || 'Thường'}`;
-        if (data.technicaldescription) details += `, Cơ chế: ${data.technicaldescription}`;
-        details += `)`;
-    }
-    return details;
-};
-
-
-const formatStoryText = useCallback((text) => {
-    if (text === null || text === undefined) {
-        return null;
-    }
-
-    const parseAndRenderText = (contentString) => {
-        if (!contentString || typeof contentString !== 'string') {
-            return contentString;
-        }
-
-        const loreRegex = /\*([^*]+)\*/g;
-        const parts = contentString.split(loreRegex);
-        
-        return parts.map((part, index) => {
-            if (index % 2 === 1) { 
-                const loreName = part;
-                const foundEntityInfo = findLoreEntity(loreName, knowledge, playerCharacter);
-                
-                if (foundEntityInfo) {
-                    // --- LOGIC MÀU SẮC THEO LOẠI THỰC THỂ ---
-                    let baseColorClass = "text-[#cda45e] border-[#cda45e]/40 drop-shadow-[0_0_8px_rgba(205,164,94,0.3)]"; // Mặc định: Vàng Đồng (Cho NPC)
-                    
-                    if (foundEntityInfo.type === 'location') {
-                        // Xanh Ngọc Bích cho Địa điểm
-                        baseColorClass = "text-[#5eead4] border-[#5eead4]/40 drop-shadow-[0_0_8px_rgba(94,234,212,0.2)]"; 
-                    } else if (['item', 'worldItem', 'skill', 'loreSkill', 'quest', 'loreQuest'].includes(foundEntityInfo.type)) {
-                        // Tím/Lam Nhạt cho Vật phẩm, Kỹ năng, Nhiệm vụ
-                        baseColorClass = "text-[#a5b4fc] border-[#a5b4fc]/40 drop-shadow-[0_0_8px_rgba(165,180,252,0.2)]"; 
-                    }
-
-                    return (
-                        <span
-                            key={`lore-${index}`}
-                            className={`${baseColorClass} hover:text-[#fef3c7] hover:border-[#fef3c7] hover:drop-shadow-[0_0_12px_rgba(254,243,199,0.6)] font-bold cursor-pointer transition-all duration-300 border-b border-dashed`}
-                            title={`Nhấn để tra cứu: ${loreName}`}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                openQuickLoreModal('auto-detect', loreName);
-                            }}
-                        >
-                            {loreName}
-                        </span>
-                    );
-                } else {
-                
+    found = findInArray(knowledge.loreS
