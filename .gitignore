@@ -8,8 +8,4 @@ coverage/
 !.env.example
 *.rar
 *.zip
-<<<<<<< HEAD
 *.tar.gz
-=======
-*.tar.gz
->>>>>>> 765d152a299d90c89fe8b976866c9cbfb8bd8b83
