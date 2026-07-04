@@ -465,6 +465,7 @@ const LoadGameModal = ({ savedGames, loadGame, setShowLoadGameModal, setConfirma
                                                 setSavedGames(prev => prev.filter(g => g.id !== game.id));
                                             }
                                         } else {
+                                            if (!db) throw new Error("Không thể xóa bản lưu đám mây khi chưa kết nối Firebase.");
                                             await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/games`, game.id));
                                             if (setSavedGames) {
                                                 setSavedGames(prev => prev.filter(g => g.id !== game.id));
@@ -499,10 +500,32 @@ const LoadGameModal = ({ savedGames, loadGame, setShowLoadGameModal, setConfirma
     </div>
 );
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+let app = null;
+let auth = null;
+let db = null;
+let storage = null;
+
+const isValidFirebaseConfig = (config) => {
+    return config && config.apiKey && typeof config.apiKey === 'string' && config.apiKey.trim().length > 0 && !config.apiKey.startsWith("YOUR_") && !config.apiKey.startsWith("MY_");
+};
+
+if (isValidFirebaseConfig(firebaseConfig)) {
+    try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        storage = getStorage(app);
+        console.log("Firebase initialized successfully with config.");
+    } catch (e) {
+        console.error("Failed to initialize Firebase:", e);
+        app = null;
+        auth = null;
+        db = null;
+        storage = null;
+    }
+} else {
+    console.warn("No valid Firebase configuration found (or it is a placeholder). Running in Offline (Local Storage) mode.");
+}
 
 
 // --- KHỞI TẠO FIREBASE THỨ 2 DÀNH RIÊNG CHO PVP (ĐỘNG) ---
@@ -14462,7 +14485,7 @@ const generateSystemIdlePose = async (baseImageUrl, effectiveApiKey) => {
             img.src = base64Data;
         });
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-image-preview:generateContent?key=${effectiveApiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent?key=${effectiveApiKey}`;
         
         const prompt = `Redraw this anime character EXACTLY facing forward. 
         POSE INSTRUCTION: She is facing forward, framed from the waist up (waist-up portrait showing her entire upper body). She is leaning forward slightly, resting her chin on her hands.
@@ -14622,7 +14645,7 @@ class ApiQueueManager {
 const globalApiQueue = new ApiQueueManager();
 
 const generateSystemAssistantPose = async (poseDesc, baseImageBase64, effectiveApiKey) => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${effectiveApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${effectiveApiKey}`;
     const prompt = `Redraw this character with the expression, emotion, and dynamic pose: ${poseDesc}. 
     Maintain the exact same character features (such as hair color, eye color, clothing style, and facial features) as the reference image, but allow changing the head tilt, body posture, and hand gestures to vividly match the described emotion.
     CRITICAL COLOR RULES (CHROMA KEY):
@@ -14810,7 +14833,7 @@ const buildAvatarPrompt = (character, gameSettings) => {
 const generateSingleImage = async (promptText, effectiveApiKey) => {
     console.log("Đang gọi API Gemini 3.1 Flash cho NHÂN VẬT với prompt:", promptText); 
     
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${effectiveApiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${effectiveApiKey}`;
     const payload = {
         contents: [{ role: "user", parts: [{ text: `Generate an image: ${promptText}` }] }],
         generationConfig: { responseModalities: ["IMAGE"] }
@@ -17891,7 +17914,7 @@ const loadGameAndResetHistory = async (gameData) => {
         const gameIdToSet = finalGameData.id;
         let activeGameData = null;
 
-        if (gameIdToSet && userId && !finalGameData.isAutosave && !finalGameData.isSupabaseCloud) {
+        if (db && gameIdToSet && userId && !finalGameData.isAutosave && !finalGameData.isSupabaseCloud) {
             const chunksColRef = collection(db, `artifacts/${appId}/users/${userId}/games/${gameIdToSet}/history_chunks`);
             const assetsColRef = collection(db, `artifacts/${appId}/users/${userId}/games/${gameIdToSet}/character_assets`);
             
@@ -19832,7 +19855,7 @@ const generateCombatEnvironment = async (bgPrompt, effectiveApiKey) => {
 
     console.log("Đang gọi API Gemini 3.1 Flash cho CẢNH NỀN với prompt:", bgPrompt);
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${effectiveApiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${effectiveApiKey}`;
     const finalPrompt = `Generate an image: ${bgPrompt}. Masterpiece 2D flat game art, side-scrolling RPG arena. Zero perspective depth. CRITICAL: The bottom 40% to 50% of the image MUST be a solid, flat, walkable ground floor texture. The top part is the background scenery. Clear horizontal horizon. (NO text, NO words, NO watermarks, NO borders, NO vignette, NO white edges, NO UI, NO characters).`;
     const payload = {
         contents: [{ role: "user", parts: [{ text: finalPrompt }] }],
@@ -21859,6 +21882,24 @@ useEffect(() => {
 }, [knowledge.pendingModeChange]); // Dependency: Chỉ chạy khi thuộc tính này thay đổi
 
 useEffect(() => {
+    if (!auth) {
+      setUserId("local_user");
+      if (import.meta.env.VITE_GEMINI_API_KEY) {
+        setApiKey(import.meta.env.VITE_GEMINI_API_KEY);
+        setInputApiKey(import.meta.env.VITE_GEMINI_API_KEY);
+        setApiMode('userKey');
+        setApiKeyStatus({ status: 'Đã kết nối (.env)', message: 'Đang dùng Gemini API Key từ file .env.local (free tier).', color: 'text-green-500' });
+      } else {
+        setApiMode('defaultGemini');
+        setApiKeyStatus({
+          status: 'Đang dùng Gemini AI Mặc Định',
+          color: 'text-sky-400'
+        });
+      }
+      setIsAuthReady(true);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUserId(user.uid);
@@ -22107,6 +22148,42 @@ useEffect(() => {
 
   useEffect(() => {
     if (isAuthReady && userId) {
+      if (!db) {
+        // Firebase not active - load ONLY local games
+        const loadOnlyLocalGames = async () => {
+          let localAutosaves = [];
+          try {
+              const keys = await getAllIndexedDBKeys();
+              for (const key of keys) {
+                  if (key.startsWith('autosave_') || key.startsWith('manual_local_')) {
+                      const localData = await getAvatarFromIndexedDB(key);
+                      if (localData) {
+                          localAutosaves.push({
+                              id: key,
+                              isAutosave: key.startsWith('autosave_'),
+                              isLocalManual: key.startsWith('manual_local_'),
+                              updatedAt: { toDate: () => new Date(localData.timestamp) },
+                              currentTurn: localData.currentTurn,
+                              gameSettings: localData.gameSettings,
+                              ...localData
+                          });
+                      }
+                  }
+              }
+          } catch (e) {
+              console.error("Lỗi quét lưu trữ cục bộ từ IndexedDB:", e);
+          }
+          localAutosaves.sort((a, b) => {
+              const timeA = a.updatedAt?.toDate ? a.updatedAt.toDate().getTime() : 0;
+              const timeB = b.updatedAt?.toDate ? b.updatedAt.toDate().getTime() : 0;
+              return timeB - timeA;
+          });
+          setSavedGames(localAutosaves);
+        };
+        loadOnlyLocalGames();
+        return;
+      }
+
       const gamesCollectionPath = `artifacts/${appId}/users/${userId}/games`;
       const q = query(collection(db, gamesCollectionPath));
       
@@ -22448,6 +22525,16 @@ const addInitialTrait = () => {
         return;
     }
     setIsLoading(true); 
+    if (!db) {
+      localStorage.setItem(`offline_api_key`, inputApiKey);
+      setApiKey(inputApiKey); 
+      setApiMode('userKey'); 
+      setApiKeyStatus({ status: 'Đã lưu (Cục bộ)', message: 'API Key của bạn đã được lưu cục bộ trên trình duyệt!', color: 'text-green-500' });
+      setShowApiModal(false);
+      setModalMessage({ show: true, title: 'Thành Công', content: 'API Key của bạn đã được lưu cục bộ!', type: 'success' });
+      setIsLoading(false);
+      return;
+    }
     try {
       const apiKeyRef = doc(db, `artifacts/${appId}/users/${userId}/apiCredentials/gemini`);
       await setDoc(apiKeyRef, { key: inputApiKey, lastUpdated: serverTimestamp() });
@@ -22466,6 +22553,9 @@ const addInitialTrait = () => {
 
   const loadApiKey = async (currentUserId) => {
     if (!currentUserId) return null;
+    if (!db) {
+      return localStorage.getItem(`offline_api_key`);
+    }
     try {
       const apiKeyRef = doc(db, `artifacts/${appId}/users/${currentUserId}/apiCredentials/gemini`);
       const docSnap = await getDoc(apiKeyRef);
@@ -24395,7 +24485,7 @@ const processSprite = (base64Str, normalizedBaseMass = null, isSkill = false) =>
 
 
 const generateSpecificPose = async (poseDesc, baseImageBase64, baseMass, effectiveApiKey, isSkill = false) => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${effectiveApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${effectiveApiKey}`;
     const prompt = `Generate an image: Redraw the character EXACTLY FACING RIGHT in pose: ${poseDesc}. 2D hand-drawn turn-based RPG game asset. Crisp flat art style. EXTREMELY IMPORTANT: ONLY ONE single character centered in the frame. DO NOT draw multiple characters. DO NOT draw duplicate characters side-by-side. NO sprite sheets, NO comparisons. PURE SOLID #FFFFFF WHITE BACKGROUND ONLY. DO NOT USE BLACK OR DARK BACKGROUNDS. CLEAR DAYLIGHT LIGHTING. NO SCENERY. NO 3D RENDER. CRITICAL INSTRUCTION: Maintain exact same body proportions and character design as the reference image.`;
     
     const payload = { 
@@ -32378,16 +32468,22 @@ const saveGameProgress = async (gameIdToSave, story, currentChoices, fullStoryHi
         console.log("=== BẮT ĐẦU ĐO HIỆU NĂNG TIẾN TRÌNH LƯU GAME ===");
         console.time("⏱️ Tổng thời gian lưu game");
 
+        if (!db) {
+            options.isLocal = true;
+        }
+
         let gameDocRef;
-        let finalGameId = gameIdToSave;
-        if (options.forcedId) {
-            gameDocRef = doc(db, `artifacts/${appId}/users/${userId}/games/${options.forcedId}`);
-            finalGameId = options.forcedId;
-        } else if (gameIdToSave) {
-            gameDocRef = doc(db, `artifacts/${appId}/users/${userId}/games/${gameIdToSave}`);
-        } else {
-            gameDocRef = doc(collection(db, `artifacts/${appId}/users/${userId}/games`));
-            finalGameId = gameDocRef.id;
+        let finalGameId = gameIdToSave || (options.isLocal ? 'local_' + Date.now() : '');
+        if (!options.isLocal && db) {
+            if (options.forcedId) {
+                gameDocRef = doc(db, `artifacts/${appId}/users/${userId}/games/${options.forcedId}`);
+                finalGameId = options.forcedId;
+            } else if (gameIdToSave) {
+                gameDocRef = doc(db, `artifacts/${appId}/users/${userId}/games/${gameIdToSave}`);
+            } else {
+                gameDocRef = doc(collection(db, `artifacts/${appId}/users/${userId}/games`));
+                finalGameId = gameDocRef.id;
+            }
         }
 
         const cleanId = finalGameId ? finalGameId.replace(/^(autosave_|manual_\d+_|manual_local_)/, '') : '';
@@ -32396,7 +32492,7 @@ const saveGameProgress = async (gameIdToSave, story, currentChoices, fullStoryHi
             setCurrentGameId(cleanId);
         }
 
-        const chunksColRef = collection(db, `artifacts/${appId}/users/${userId}/games/${finalGameId}/history_chunks`);
+        const chunksColRef = (!options.isLocal && db) ? collection(db, `artifacts/${appId}/users/${userId}/games/${finalGameId}/history_chunks`) : null;
 
         const [activePlayerAvatar, ...characterAssets] = (options.isAutosave)
             ? [null]
@@ -32995,44 +33091,4 @@ ${emotionDescriptions.join('\n')}
         if (type === 'quest') {
             const deadlineDays = Math.floor(Math.random() * 6) + 2;
             const deadlineHours = deadlineDays * 24; 
-            forcedCommand = `[QUEST_ASSIGNED: title="Điền tên nhiệm vụ vào đây", description="Mô tả chi tiết những gì Ký chủ cần làm", category="hệ thống", deadline_hours=${deadlineHours}]`;        } else if (type === 'quest_reminder') {
-            const questName = options.quest?.title || "Nhiệm vụ";
-            reasonContext = `Hệ thống ăn bám chủ động cắt ngang dòng ý thức của ký chủ, kéo họ vào Thức Hải để HỐI THÚC và NHẮC NHỞ rằng thời gian thực hiện Nhiệm vụ Hệ thống "${questName}" sắp cạn kiệt (dưới 10% thời gian còn lại). Hãy tỏ ra sốt ruột hoặc chế giễu sự trì hoãn của họ.`;
-        } else if (type === 'level_up') {
-            const donationLog = options.donationLog || "Cung phụng chân nguyên";
-            reasonContext = `Hệ thống ăn bám vừa được ký chủ cung phụng (${donationLog}) và tích lũy đủ chân nguyên thăng lên Cấp ${currentLvl}. Hệ thống bộc phát xuất hiện trong Thức Hải với trạng thái đầy kiêu hãnh và vui mừng để khoe khoang tu vi mới, đồng thời trêu chọc hoặc nhận xét trực tiếp về lễ vật vừa nhận được.`;
-        } else if (type === 'death_preservation') {
-            reasonContext = "Ký chủ vừa cạn kiệt khí huyết, nhận vết thương chí mạng suýt chết ngoài thực tế, buộc Hệ thống ăn bám phải cưỡng chế bộc phát năng lượng hộ thể để phong ấn vết thương, bảo vệ đan điền trong ranh giới sinh tử.";
-        } else if (type === 'casual_affinity_high') {
-            forcedCommand = `[ITEM_IDEA_GAINED: name="Lễ vật bồi dưỡng Thức Hải", description="Món quà bất ngờ từ Hệ thống ăn bám.", rarity="Tốt"]`;
-            reasonContext = "Hệ thống ăn bám có tâm trạng vui vẻ và yêu mến ký chủ (Hảo cảm cao), xuất hiện ngẫu nhiên trong Thức Hải để tặng một món quà ảo ảnh bồi dưỡng tinh thần.";
-        } else if (type === 'casual_affinity_low') {
-            forcedCommand = `[APPLY_LONG_TERM_STATUS: target="Ngươi", status_id="HTAB_TEASE_TEMP", name="Hắc hỏa chọc ghẹo", duration_hours=2, stats="SPD_PERCENT:-10"]`;
-            reasonContext = "Hệ thống ăn bám đang dỗi, không hài lòng với thái độ của ký chủ (Hảo cảm thấp), xuất hiện nguyền rủa nhẹ chọc ghẹo.";
-        } else if (type === 'summon') {
-            reasonContext = "Người chơi (ký chủ/ chủ nhân vừa gọi bạn xuất hiện)";
-        } else {
-            reasonContext = "Hệ thống ăn bám xuất hiện ngẫu nhiên trong Thức Hải chỉ để trò chuyện phiếm, đàm đạo hoặc lém lỉnh nhận xét về hoàn cảnh thực tế hiện tại của ký chủ mà không có thưởng hay phạt.";
-        }
-
-        const prompt = getUnifiedHtabPrompt(lastStoryText, reasonContext, forcedCommand, htabObj.chatHistory || [], "", storyHistory, storySummaries, gameSettings, knowledge);
-
-        try {
-            const effectiveApiKey = apiMode === 'userKey' ? apiKey : "";
-            const response = await fetchWithRetries(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${effectiveApiKey}`,
-                { contents: [{ role: "user", parts: [{ text: prompt }] }] }
-            );
-
-            if (response) {
-                let cleanResponse = response;
-                let detectedEmotion = 'idle';
-                let shouldExit = false;
-                const collectedCommands = [];
-
-                const emotionMatch = response.match(/\[HTAB_EMOTION:\s*type="([^"]+)"\]/i);
-                if (emotionMatch) {
-                    const rawEmo = emotionMatch[1].toLowerCase().trim();
-                    if (['smile', 'happy', 'teasing'].includes(rawEmo)) detectedEmotion = 'smile';
-                    else if (['sad', 'melancholy'].includes(rawEmo)) detectedEmotion = 'sad';
-                    el
+            forcedCommand = `[QUEST_ASSIGNED: title="Điền tên nhiệm vụ vào đây", description="Mô tả chi tiết những gì Ký chủ cần làm", category="hệ thống", deadline_hours=${deadlineHours}]`;        } else if (type === 
