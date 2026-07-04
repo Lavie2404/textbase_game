@@ -5051,8 +5051,7 @@ const ApiSetupModal = ({
                             }
                         }}
                         placeholder="Nhập API Key Gemini của ngươi"
-                        className={`w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-purple-500 focus:border-purple-500 ${apiMode !== 'userKey' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        disabled={apiMode !== 'userKey'}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-purple-500 focus:border-purple-500"
                     />
                 </div>
                  {apiMode === 'userKey' && (
@@ -5251,6 +5250,19 @@ const GameSetupScreen = ({
                             </div>
                         </div>
                     </label>
+                    {gameSettings.allowNsfw && (
+                        <div className="w-full mt-2">
+                            <label htmlFor="customNsfwText" className="block text-xs text-[#8ba888] font-sans mb-1">
+                                Đoạn văn Song Tu tùy chỉnh (không bắt buộc). Dùng [npc.Name] làm chỗ thay tên đối phương. Nếu muốn nhiều đoạn khác nhau để tránh lặp lại, hãy viết nhiều đoạn, mỗi đoạn ngăn cách bằng một dòng chỉ chứa "---" — hệ thống sẽ ngẫu nhiên chọn một đoạn mỗi lần Song Tu.
+                            </label>
+                            <textarea
+                                id="customNsfwText" name="customNsfwText" rows={4}
+                                value={gameSettings.customNsfwText} onChange={handleInputChange}
+                                placeholder="Để trống để dùng đoạn mặc định của hệ thống..."
+                                className="w-full p-3 bg-[#101a10] border border-[#8b1515]/50 rounded-sm text-[#e8d3a1] text-sm focus:ring-[#ff4d4d] focus:border-[#ff4d4d]"
+                            />
+                        </div>
+                    )}
                     <label htmlFor="htab-toggle" className="relative cursor-pointer group flex-1">
                         <input 
                             type="checkbox" id="htab-toggle" name="enableParasiticSystem" className="sr-only" 
@@ -7435,8 +7447,7 @@ const SettingsMenu = ({
     show, onClose, onSaveToLocal, onSaveToCloud, onLoadFromCloud, onSaveToFile, onLoadFromFile, onRestart, onGoHome, onClearCache, currentPlayStyle, onTogglePlayStyle, uiTheme, onSetTheme, onOpenThemeEditor,
     bgmUrl, bgmVolume, isPlayingBgm, onBgmUrlChange, onBgmVolumeChange, onToggleBgm, onOpenCacheManager, onOpenGallery,
     onDebugAwakenHtab, gameMode,
-    textScale, onTextScaleChange,
-    gameSettings, setGameSettings
+    textScale, onTextScaleChange 
 }) => {
 
     const [showThemeList, setShowThemeList] = useState(false);
@@ -25016,12 +25027,15 @@ ${getModeInstruction()}
 //    - LƯU Ý: Thuộc tính speaker KHÔNG ĐƯỢC ĐỂ TRỐNG. Nếu nhân vật chính nói, BẮT BUỘC viết: <dialogue speaker="Ngươi">...
 //    - Nếu NPC nhắc đến tên nhân vật chính, BẮT BUỘC dùng placeholder [NC]. (Ví dụ: <dialogue speaker="NPC">Cảm ơn [NC].</dialogue>)
 
-// 2.5. QUY TẮC XƯNG HÔ ĐẠO LỮ (BẮT BUỘC):
-//    - Nếu một NPC được đánh dấu danh xưng "Đạo Lữ" (xem chú thích trong danh sách nhân vật), khi NPC đó và nhân vật chính đối thoại TRỰC TIẾP với nhau, BẮT BUỘC thay thế toàn bộ cách xưng hô thông thường (ngươi/ta) bằng cặp xưng hô đôi lứa "chàng/thiếp":
-//      * Nếu NPC là Nữ: NPC tự xưng là "thiếp", gọi nhân vật chính là "chàng". Nếu nhân vật chính (Nam) đáp lời, nhân vật chính tự xưng là "chàng", gọi NPC là "thiếp".
-//      * Nếu NPC là Nam: NPC tự xưng là "chàng", gọi nhân vật chính là "thiếp". Nếu nhân vật chính (Nữ) đáp lời, nhân vật chính tự xưng là "thiếp", gọi NPC là "chàng".
+// 2.5. QUY TẮC XƯNG HÔ THEO MỐI QUAN HỆ (BẮT BUỘC):
+//    - Mặc định (Người lạ, chưa có tình cảm — cả hai chiều): Nhân vật chính và NPC xưng hô "ngươi/ta".
+//    - Nếu một NPC được đánh dấu danh xưng "Đạo Lữ" (người yêu chính thức, xem chú thích trong danh sách nhân vật), khi NPC đó và nhân vật chính đối thoại TRỰC TIẾP với nhau, BẮT BUỘC thay thế toàn bộ cách xưng hô thông thường bằng cặp xưng hô đôi lứa cố định sau (không phụ thuộc giới tính):
+//      * Nhân vật chính gọi NPC là "nàng", tự xưng "ta".
+//      * NPC (Đạo Lữ) gọi nhân vật chính là "chàng", tự xưng "thiếp".
+//    - NGOẠI LỆ (đang theo đuổi): Nếu độ hảo cảm của NPC dành cho nhân vật chính vẫn còn ở mức "Người lạ" (thấp) NHƯNG diễn biến câu chuyện cho thấy nhân vật chính đang chủ động theo đuổi/bày tỏ tình cảm với NPC đó, nhân vật chính BẮT BUỘC đã xưng hô "nàng/ta" khi nói chuyện với NPC này, dù NPC (chưa có tình cảm đáp lại) vẫn có thể xưng hô "ngươi/ta" như bình thường.
 //      * Quy tắc này CHỈ áp dụng cho lời thoại (<dialogue>) giữa hai người, KHÔNG áp dụng cho văn tường thuật (narrator) hay đối thoại với các nhân vật khác.
-//      * VÍ DỤ: <dialogue speaker="Mã Tiểu Đào">Chàng có thấy hạnh phúc khi ở bên thiếp không, [NC]?</dialogue>
+//      * VÍ DỤ (Đạo Lữ): <dialogue speaker="Mã Tiểu Đào">Chàng có thấy hạnh phúc khi ở bên thiếp không, [NC]?</dialogue>
+//      * VÍ DỤ (đang theo đuổi): <dialogue speaker="Ngươi">Nàng đừng lo, có ta ở đây.</dialogue>
 
 // 3. QUY TẮC CHỐNG LIỆT KÊ TRONG VĂN BẢN (ANTI-REDUNDANCY):
 //    - Trong phần văn tường thuật, TUYỆT ĐỐI KHÔNG viết danh sách dạng số (1., 2., 3.). Hãy diễn đạt tình huống mở ra các hướng đi một cách tự nhiên.
@@ -26310,16 +26324,14 @@ const getDefaultNsfwText = () => {
 
 Trong lúc nụ hôn sâu làm nàng choáng váng đầu óc, bàn tay thô ráp của ngươi dời xuống, lách qua thắt lưng tơ lụa mỏng manh rủ xuống chân, luồn vào trong lột phăng xiêm y của cả hai, để lộ hai nhục thể trần trụi quấn lấy nhau dưới ánh nến mờ ảo. Ánh mắt ngươi rực lửa dục vọng dán chặt vào đôi gò bồng đảo (vú) căng tròn tuyết trắng nhô cao, đỉnh hồng nhuận đang run rẩy vì hơi lạnh và hưng phấn. Ngươi thô bạo nhưng đầy đê mê thò tay bóp mạnh hai bầu vú mềm mại của nàng, nắn bóp nồng nhiệt thành đủ loại hình dạng đầy khiêu gợi, cảm nhận sự đàn hồi ấm nóng tột đỉnh khiến nàng ưỡn cong người, đôi môi hé mở phát ra những tiếng rên rỉ dâm mỹ kiều mị đầy kích thích.
 
-Không dừng lại ở đó, tay ngươi vuốt ve dọc theo những đường cong mê người, mơn trớn làn da mịn màng như mỡ đông rồi trượt xuống bắp đùi thon thả, tiến thẳng vào vùng cấm địa sâu kín giữa hai chân nàng. Ngón tay ngươi chạm vào khe lồn (âm đạo) ẩm ướt, mơn trớn những nếp gấp mềm mại của mép lồn chứa chan mật thủy dâm đãng đang không ngừng rỉ ra ướt đẫm. Khi ngón tay ngươi khẽ tách hai cánh môi âm hộ ra và thọc sâu vào lỗ âm đạo mút mát chặt chẽ đầy ấm nóng, [npc.Name] run rẩy dữ dội, hai tay ôm ghì lấy cổ ngươi rên rỉ thất thanh: "Áh... ưm... sâu quá... ư... sướng..."
+Không dừng lại ở đó, tay ngươi vuốt ve dọc theo những đường cong mê người, mơn trớn làn da mịn màng như mỡ đông rồi trượt xuống bắp đùi thon thả, tiến thẳng vào vùng cấm địa sâu kín giữa hai chân nàng. Ngón tay ngươi chạm vào khe lồn (âm đạo) ẩm ướt, mơn trớn những nếp gấp mềm mại của mép lồn chứa chan mật thủy dâm đãng đang không ngừng rỉ ra ướt đẫm. Khi ngón tay ngươi khẽ tách hai cánh môi âm hộ ra và thọc sâu vào lỗ âm đạo mút mát chặt chẽ đầy ấm nóng, [npc.Name] run rẩy dữ dội, hai tay ôm ghì lấy cổ ngươi rên rỉ thất thanh: <dialogue speaker="[npc.Name]">Áh... ưm... sâu quá... ư... sướng...</dialogue>
 
 Dục vọng nguyên thủy dâng trào tột đỉnh, dương vật (cu, cặc) của ngươi đã cương cứng nóng bỏng, trướng to đến mức nổi đầy gân xanh cuồn cuộn. Ngươi bế thốc nàng lên, bắt nàng dạng rộng hai chân vòng qua hông mình, rồi nhắm thẳng vào khe lồn đỏ hồng đầm đìa nước nôi dâm đãng mà đâm mạnh một cú lút cán. Dương vật to nóng như thanh sắt nung đỏ thọc sâu ngập lụt vào tận đáy âm đạo, phá vỡ mọi phòng ngự, trực tiếp va chạm cuồng nhiệt vào tử cung mềm mại bên trong. [npc.Name] hét lên một tiếng đầy sung sướng đê mê, khoái cảm cực độ ập đến như sóng thần khiến nàng run bần bật, lỗ hậu môn (lỗ đít, lỗ hậu) co thắt điên cuồng đầy kích thích.
 
-Ngươi bắt đầu luật động cuồng nhiệt, dùng lực hông dồn dập dập mạnh dương vật ra vào lỗ lồn ấm nóng. Tiếng va chạm da thịt "bạch bạch bạch" vang dội liên hồi hòa quyện cùng tiếng nước dâm thủy lép nhép dâm mỹ phát ra từ nơi giao hợp. Ngươi đổi sang tư thế bắt nàng quỳ sấp, nhổm mông tròn lẳng ra phía sau, phơi bày toàn bộ khe lồn đỏ rực và lỗ hậu môn nhỏ nhắn sẫm màu kích thích cực hạn. Ngươi nắm chặt eo nàng, từ phía sau đâm mạnh cặc vào sâu hoắm trong âm đạo, mỗi một cú thúc dập đều cắm lút gốc khiến hai bầu vú nàng lắc lư điên cuồng trước ngực. Nàng gục đầu xuống gối rên rỉ rên la dâm đãng: "Ôi cặc to quá... đâm chết thiếp rồi... ưm... cu bự thúc sâu quá... áhh..."
+Ngươi bắt đầu luật động cuồng nhiệt, dùng lực hông dồn dập dập mạnh dương vật ra vào lỗ lồn ấm nóng. Tiếng va chạm da thịt "bạch bạch bạch" vang dội liên hồi hòa quyện cùng tiếng nước dâm thủy lép nhép dâm mỹ phát ra từ nơi giao hợp. Ngươi đổi sang tư thế bắt nàng quỳ sấp, nhổm mông tròn lẳng ra phía sau, phơi bày toàn bộ khe lồn đỏ rực và lỗ hậu môn nhỏ nhắn sẫm màu kích thích cực hạn. Ngươi nắm chặt eo nàng, từ phía sau đâm mạnh cặc vào sâu hoắm trong âm đạo, mỗi một cú thúc dập đều cắm lút gốc khiến hai bầu vú nàng lắc lư điên cuồng trước ngực. Nàng gục đầu xuống gối rên rỉ rên la dâm đãng: <dialogue speaker="[npc.Name]">Ôi cặc to quá... đâm chết thiếp rồi... ưm... cu bự thúc sâu quá... áhh...</dialogue>
 
 Nhịp điệu dập cặc càng lúc càng điên cuồng gấp gáp, mồ hôi đầm đìa hòa quyện giữa hai thân thể trần trụi nồng nặc mùi hoan lạc dâm dục. Chân khí âm dương lúc này luân chuyển điên cuồng cuồn cuộn qua kinh mạch đả thông các huyệt đạo giao hòa mãnh liệt. Khi đạt đến đỉnh điểm của sự sung sướng nhục dục cực hạn, dương vật ngươi giật giật dữ dội thọc sâu vào tận cùng âm đạo nàng, bắn ra những luồng tinh dịch (bắn tinh) nóng hổi, đậm đặc, phun thẳng vào sâu trong tử cung ấm áp của nàng. [npc.Name] thăng hoa tột cùng, lỗ lồn co bóp kẹp chặt lấy cặc ngươi điên cuồng, nàng rên rỉ kiệt sức đổ gục trong vòng tay ngươi, tận hưởng dư vị sung sướng, đê mê của cuộc mây mưa trần trụi cuồng nhiệt nhất thế gian.`;
 };
-
-const SONG_TU_TITLE = "Đạo Lữ";
 
 // Song Tu cùng một NPC. Yêu cầu Hảo Cảm >= 80. Không giới hạn số lần.
 // Luôn tăng Hảo Cảm; lần đầu tiên mở khóa danh xưng "Đạo Lữ"; có xác suất nhỏ mở khóa thêm kỹ năng hoặc một đoạn cốt truyện.
@@ -26340,14 +26352,17 @@ const handleSongTu = async (characterId) => {
 
     let storySnippet = null;
     const isNsfw = gameSettings.allowNsfw;
-    
+
     if (isNsfw) {
         setModalMessage({ show: true, title: "Đang Song Tu...", content: `Ngươi đang ôm khít lấy [${npc.Name}], lột bỏ xiêm y, cùng nhục thân hòa quyện song tu...`, type: "info" });
         const npcName = npc.Name;
-        let customText = gameSettings.customNsfwText || "";
-        if (!customText.trim()) {
-            customText = getDefaultNsfwText();
-        }
+        const customVariants = (gameSettings.customNsfwText || "")
+            .split(/\n\s*---\s*\n/)
+            .map(v => v.trim())
+            .filter(Boolean);
+        const customText = customVariants.length > 0
+            ? customVariants[Math.floor(Math.random() * customVariants.length)]
+            : getDefaultNsfwText();
         storySnippet = customText.replace(/Đạo Lữ/g, npcName).replace(/\[npc\.Name\]/g, npcName).replace(/\[npcName\]/g, npcName);
     } else {
         const prompt = `Viết một đoạn tường thuật chi tiết, đậm chất văn phong tiểu thuyết mạng tu tiên Tiếng Việt hoành tráng và lãng mạn, mô tả quá trình song tu giữa nhân vật chính (người chơi) and đạo lữ "${npc.Name}" (Tính cách: ${npc.Personality || "bí ẩn, sâu sắc"}, Ngoại hình: ${npc.Appearance || "thanh tao"}, Cảnh giới/Level: ${npc.level || 1}).
@@ -26402,7 +26417,7 @@ Yêu cầu mô tả sự giao hòa của linh lực giữa hai người, chân k
     const parts = [`Hảo Cảm với ${npc.Name} tăng thêm ${affinityGain} điểm.`];
     if (isFirstTime) parts.push(`Mở khóa danh xưng "${SONG_TU_TITLE}"!`);
     if (rollSkill) parts.push(`Đạo lữ đã giúp ngươi lĩnh ngộ được một kỹ năng mới!`);
-    if (storySnippet) parts.push(`Một đoạn cốt truyện song tu chi tiết đã được khắc ghi vào nhật ký phiêu lưu.`);
+    if (storySnippet) parts.push(`Một đoạn cốt truyện mới đã được mở khóa.`);
 
     setModalMessage({ show: true, title: "Song Tu Viên Mãn", content: parts.join('\n'), type: "success" });
 };
@@ -27521,7 +27536,7 @@ ${questDetails}
 
             const getCharacterTitleTag = (c) => {
                 if (!c.titles?.includes('Đạo Lữ')) return '';
-                return ` | Danh xưng: Đạo Lữ của Ngươi (Giới tính: ${c.Gender || 'Không rõ'} — BẮT BUỘC dùng xưng hô chàng/thiếp khi đối thoại với Ngươi, xem QUY TẮC XƯNG HÔ ĐẠO LỮ)`;
+                return ` | Danh xưng: Đạo Lữ của Ngươi (BẮT BUỘC dùng xưng hô nàng/ta - chàng/thiếp khi đối thoại với Ngươi, xem QUY TẮC XƯNG HÔ THEO MỐI QUAN HỆ)`;
             };
 
             const activeCompanionsString = sanitizedKnowledge.characters
@@ -32321,4 +32336,1000 @@ const findLoreEntity = (name, knowledge, playerCharacter) => {
     found = findInArray(knowledge.worldItems || []);
     if (found) return { data: found, type: 'Vật phẩm' };
 
-    found = findInArray(knowledge.loreS
+    found = findInArray(knowledge.loreSkills || [], ['Name', 'name']);
+    if (found) return { data: found, type: 'Kỹ năng' };
+
+    found = findInArray(knowledge.loreQuests || [], ['title']);
+    if (found) return { data: found, type: 'Nhiệm vụ' };
+
+    found = findInArray(knowledge.loreNpcs || [], ['Name', 'name']);
+    if (found) return { data: found, type: 'NPC' };
+
+    found = findInArray(knowledge.loreLocations || [], ['Name', 'name']);
+    if (found) return { data: found, type: 'Địa điểm' };
+
+    return null;
+};
+
+const formatEntityForPrompt = (entityInfo) => {
+    if (!entityInfo || !entityInfo.data) return "";
+    const { type, data } = entityInfo;
+    let details = `- [${type}] ${data.Name || data.name || data.title}`;
+    if (data.description) details += `: "${data.description}"`;
+    else if (data.Backstory) details += `: "${data.Backstory}"`;
+
+    if (type === 'NPC') {
+        details += ` (Cấp ${data.level || 1}, Thái độ: ${data.Stance || 'Trung lập'}, Tính cách: ${data.Personality || 'Bình thường'}`;
+        if (data.Role) details += `, Thân phận: ${data.Role}`;
+        details += `)`;
+    } else if (type === 'Địa điểm') {
+        details += ` (Phân loại: ${data.category || 'Địa điểm'}, Cấp phả hệ: ${data.tier || 1})`;
+    } else if (type === 'Vật phẩm') {
+        details += ` (Loại: ${data.Type}, Phẩm chất: ${data.Rarity || 'Thường'}, Giá trị: ${data.Value || 0}`;
+        if (data.Stats) details += `, Chỉ số: ${data.Stats}`;
+        details += `)`;
+    } else if (type === 'Kỹ năng') {
+        details += ` (Loại: ${data.skillType === 'combat' ? 'Chiến đấu' : 'Phiêu lưu'}, Phẩm chất: ${data.Rarity || 'Thường'}`;
+        if (data.technicaldescription) details += `, Cơ chế: ${data.technicaldescription}`;
+        details += `)`;
+    }
+    return details;
+};
+
+
+const formatStoryText = useCallback((text) => {
+    if (text === null || text === undefined) {
+        return null;
+    }
+
+    const parseAndRenderText = (contentString) => {
+        if (!contentString || typeof contentString !== 'string') {
+            return contentString;
+        }
+
+        const loreRegex = /\*([^*]+)\*/g;
+        const parts = contentString.split(loreRegex);
+        
+        return parts.map((part, index) => {
+            if (index % 2 === 1) { 
+                const loreName = part;
+                const foundEntityInfo = findLoreEntity(loreName, knowledge, playerCharacter);
+                
+                if (foundEntityInfo) {
+                    // --- LOGIC MÀU SẮC THEO LOẠI THỰC THỂ ---
+                    let baseColorClass = "text-[#cda45e] border-[#cda45e]/40 drop-shadow-[0_0_8px_rgba(205,164,94,0.3)]"; // Mặc định: Vàng Đồng (Cho NPC)
+                    
+                    if (foundEntityInfo.type === 'location') {
+                        // Xanh Ngọc Bích cho Địa điểm
+                        baseColorClass = "text-[#5eead4] border-[#5eead4]/40 drop-shadow-[0_0_8px_rgba(94,234,212,0.2)]"; 
+                    } else if (['item', 'worldItem', 'skill', 'loreSkill', 'quest', 'loreQuest'].includes(foundEntityInfo.type)) {
+                        // Tím/Lam Nhạt cho Vật phẩm, Kỹ năng, Nhiệm vụ
+                        baseColorClass = "text-[#a5b4fc] border-[#a5b4fc]/40 drop-shadow-[0_0_8px_rgba(165,180,252,0.2)]"; 
+                    }
+
+                    return (
+                        <span
+                            key={`lore-${index}`}
+                            className={`${baseColorClass} hover:text-[#fef3c7] hover:border-[#fef3c7] hover:drop-shadow-[0_0_12px_rgba(254,243,199,0.6)] font-bold cursor-pointer transition-all duration-300 border-b border-dashed`}
+                            title={`Nhấn để tra cứu: ${loreName}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openQuickLoreModal('auto-detect', loreName);
+                            }}
+                        >
+                            {loreName}
+                        </span>
+                    );
+                } else {
+                    // CẤP 2: TÊN RIÊNG CHƯA BIẾT (Giữ màu Ngà sáng để hòa hợp tổng thể)
+                    return (
+                        <span 
+                            key={`unknown-${index}`} 
+                            className="font-bold text-[#fef3c7] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                        >
+                            {loreName}
+                        </span>
+                    );
+                }
+            }
+            return part; 
+        });
+    };
+
+    if (Array.isArray(text)) {
+        return text.map((segment, index) => {
+            if (segment.type === 'narrative') {
+                return (
+                    <div key={`narrative-${index}`} className="mb-3 leading-relaxed whitespace-pre-line">
+                        {parseAndRenderText(segment.content)}
+                    </div>
+                );
+            }
+            if (segment.type === 'dialogue') {
+                const cleanedDialogueContent = segment.content.replace(/\*/g, '');
+                return (
+                    <DialogueBubble
+                        key={`dialogue-${index}`}
+                        speaker={segment.speaker}
+                        content={cleanedDialogueContent}
+                        playerName={gameSettings.characterName}
+                        characters={knowledge.characters} 
+                        gameSettings={gameSettings}
+                        openQuickLoreModal={openQuickLoreModal}
+                    />
+                );
+            }
+            return null;
+        });
+    }
+
+    if (typeof text === 'string') {
+        const segments = parseStoryWithDialogue(text);
+        return segments.map((segment, index) => {
+             if (segment.type === 'narrative') {
+                return (
+                    <div key={`old-narrative-${index}`} className="mb-3 leading-relaxed whitespace-pre-line">
+                        {parseAndRenderText(segment.content)}
+                    </div>
+                );
+            }
+            if (segment.type === 'dialogue') {
+                 const cleanedDialogueContent = segment.content.replace(/\*/g, '');
+                return (
+                    <DialogueBubble
+                        key={`old-dialogue-${index}`}
+                        speaker={segment.speaker}
+                        content={cleanedDialogueContent}
+                        playerName={gameSettings.characterName}
+                        characters={knowledge.characters} 
+                        gameSettings={gameSettings}      
+                    />
+                );
+            }
+            return null;
+        });
+    }    
+    return null;
+
+}, [gameSettings.characterName, knowledge, playerCharacter, openQuickLoreModal]);
+
+  // Quyết định class theme và hình nền động dựa trên uiTheme
+  let themeClassName = '';
+  let appBackgroundImage = 'https://cdn.jsdelivr.net/gh/kimlove136-gif/anh-nen-game@8b5b91b445d90e04b37acde408f3fbea09cd8661/123%2012.png'; 
+  
+  if (gameSettings.uiTheme === 'PINK_FLOWER') {
+      themeClassName = 'theme-pink';
+      appBackgroundImage = 'https://cdn.jsdelivr.net/gh/kimlove136-gif/anh-nen-game@3bdedd1ee569cb59c3ce7a72410650753209f44e/pink-dream-star-layering-halo-heart-shaped-powerpoint-background_51658d9da2__960_540.avif'; 
+  } else if (gameSettings.uiTheme === 'HELL_RED') {
+      themeClassName = 'theme-hell';
+      appBackgroundImage = 'https://res.cloudinary.com/dptdcwltd/image/upload/v1778831506/background-den-do-tuyet-dep_025534446_sj8ui5.jpg'; 
+  } else if (gameSettings.uiTheme === 'CUSTOM') {
+      themeClassName = 'theme-custom';
+      // Lấy ảnh nền từ cấu hình tùy chỉnh, nếu không có thì để trống (nền đen)
+      appBackgroundImage = gameSettings.customThemeConfig?.bgImage || ''; 
+  }
+
+  return (
+    // Div 1: Đặt hình nền (Nằm ngoài JSX nên dùng // được)
+    <div 
+        className={`w-full min-h-screen bg-cover bg-center bg-fixed bg-no-repeat ${themeClassName}`}
+        style={{ 
+            backgroundImage: appBackgroundImage ? `url('${appBackgroundImage}')` : 'none', 
+            backgroundColor: '#0a0505',
+            '--text-scale': (gameSettings.textScale || 100) / 100 
+        }}
+    >
+    
+        {/* Div 2: Lớp phủ tối */}
+        <div className={`w-full min-h-screen ${gameSettings.uiTheme === 'PINK_FLOWER' ? 'bg-white/10' : gameSettings.uiTheme === 'HELL_RED' ? 'bg-black/60' : 'bg-black/40'}`}>
+
+            {/* THẺ AUDIO ẨN CHO NHẠC NỀN */}
+            <audio ref={audioRef} src={gameSettings.bgmUrl} loop />
+
+            {/* Nhúng Filter CSS bẻ khóa màu */}
+            <ThemeStyles theme={gameSettings.uiTheme} customConfig={gameSettings.customThemeConfig} />
+
+
+
+            {/* Thẻ style chứa toàn bộ CSS của ứng dụng, đặt ở đây để có hiệu lực toàn cục */}
+            <style>{`
+
+
+                /* 1. Nhập font từ Google Fonts (ĐÃ CẬP NHẬT) */
+                @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Protest+Revolution&display=swap');
+
+                /* 2. Đặt font mặc định cho toàn bộ game */
+                body, .font-theme-body {
+                    font-family: 'Noto Serif', serif;
+                }
+
+                /* 3. Định nghĩa một class riêng cho font tiêu đề (ĐÃ CẬP NHẬT) */
+                .font-theme-title {
+                    font-family: 'Protest Revolution', cursive;
+                }
+
+                /* CSS CO GIÃN CỠ CHỮ THEO BIẾN CỤC BỘ */
+                .scale-text-lg { font-size: calc(1.125rem * var(--text-scale, 1)); }
+                .scale-text-base { font-size: calc(1rem * var(--text-scale, 1)); }
+                .scale-text-sm { font-size: calc(0.875rem * var(--text-scale, 1)); }
+                .scale-text-xs { font-size: calc(0.75rem * var(--text-scale, 1)); }
+
+                
+                /* Định nghĩa các keyframes cho animation */
+                @keyframes pulse-trade {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); /* Màu xanh lá cây của nút Giao Dịch */
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(52, 211, 153, 0);
+            }
+            }
+            @keyframes bounce-dot {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-10px); }
+                }
+                .animate-bounce-dot {
+                    animation: bounce-dot 1.4s infinite ease-in-out;
+                }
+            @keyframes pulse-trade {
+                    0%, 100% {
+                        transform: scale(1);
+                        box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); /* Màu vàng của nút Giao Dịch */
+                    }
+                    50% {
+                        transform: scale(1.05);
+                        box-shadow: 0 0 0 10px rgba(234, 179, 8, 0);
+                    }
+                }
+                .animate-pulse-trade {
+                    animation: pulse-trade 2s infinite;
+                }
+
+            
+            .narration-text {
+                        text-shadow: none !important;
+                    }
+
+            animate-pulse-trade {
+            animation: pulse-trade 2s infinite;
+            }                
+                @keyframes fade-in {
+                    from { opacity: 0; transform: scale(0.95); }
+                    to { opacity: 1; transform: scale(1); }
+                }
+                @keyframes fade-in-up {
+                    from { opacity: 0; transform: translateY(30px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fade-in-up {
+                    animation: fade-in-up 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+                }
+                @keyframes bounce-in {
+                    0% { transform: scale(0.1); opacity: 0; }
+                    60% { transform: scale(1.2); opacity: 1; }
+                    100% { transform: scale(1); }
+                }
+                @keyframes shadow-pulse-red {
+                    0% { box-shadow: 0 0 10px rgba(255, 0, 0, 0.5), 0 0 20px rgba(255, 0, 0, 0.3); }
+                    50% { box-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.6); }
+                    100% { box-shadow: 0 0 10px rgba(255, 0, 0, 0.5), 0 0 20px rgba(255, 0, 0, 0.3); }
+                }
+                @keyframes text-glow {
+                    0%, 100% { text-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(192, 132, 252, 0.5), 0 0 30px rgba(251, 146, 60, 0.4); }
+                    50% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(192, 132, 252, 0.8), 0 0 60px rgba(251, 146, 60, 0.7); }
+                }
+                .animate-fade-in {
+                    animation: fade-in 0.3s ease-out forwards;
+                }
+                .animate-bounce-in {
+                    animation: bounce-in 0.8s forwards;
+                }
+                .shadow-red-glow {
+                    animation: shadow-pulse-red 2s infinite alternate;
+                }
+                .animate-text-glow {
+                    animation: text-glow 5s ease-in-out infinite;
+                }
+                /* --- HIỆU ỨNG TRƯỢT LÊN CỦA HTAB --- */
+                @keyframes slideUpHtab {
+                    0% { transform: translate(-50%, 120%); opacity: 0; filter: brightness(2) blur(10px); }
+                    100% { transform: translate(-50%, 0); opacity: 1; filter: brightness(1) blur(0); }
+                }
+                .animate-htab-slideup {
+                    animation: slideUpHtab 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+                }
+                
+                @keyframes pulseHtabGlow {
+                    0%, 100% { filter: drop-shadow(0 0 15px var(--glow-color, rgba(165,180,252,0.5))); }
+                    50% { filter: drop-shadow(0 0 30px var(--glow-color, rgba(165,180,252,0.8))) brightness(1.1); }
+                }
+                .animate-htab-glow {
+                    animation: pulseHtabGlow 2.5s infinite ease-in-out;
+                }
+                /* Scrollbar styling */
+                .scrollbar-thin {
+                    scrollbar-width: thin;
+                    scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
+                }
+                ::-webkit-scrollbar {
+                    width: 6px;
+                    height: 6px;
+                }
+                ::-webkit-scrollbar-track {
+                    background: #0a0f0a; 
+                    border-radius: 4px;
+                }
+                ::-webkit-scrollbar-thumb {
+                    background-color: #cda45e; 
+                    border-radius: 4px;
+                }
+                ::-webkit-scrollbar-thumb:hover {
+                    background-color: #e8d3a1; 
+                }
+
+                /* Hỗ trợ Firefox */
+                * {
+                    scrollbar-width: thin;
+                    scrollbar-color: #cda45e #0a0f0a;
+                }
+
+                /* Ẩn các nút tăng/giảm mặc định của trình duyệt cho input number */
+                input[type=number]::-webkit-inner-spin-button, 
+                input[type=number]::-webkit-outer-spin-button { 
+                    -webkit-appearance: none; 
+                    margin: 0; 
+                }
+                input[type=number] {
+                    -moz-appearance: textfield;
+                }
+                /* Scrollbar colors */
+                .scrollbar-thumb-purple-500 { --scrollbar-thumb-color: #8B5CF6; }
+                .scrollbar-track-gray-700 { --scrollbar-track-color: #374151; }
+                .scrollbar-thumb-red-500 { --scrollbar-thumb-color: #EF4444; }
+                .scrollbar-track-red-700 { --scrollbar-track-color: #B91C1C; }
+                .scrollbar-thumb-blue-500 { --scrollbar-thumb-color: #3B82F6; }
+                .scrollbar-track-blue-700 { --scrollbar-track-color: #1D4ED8; }
+                .scrollbar-thumb-teal-500 { --scrollbar-thumb-color: #14B8A6; }
+                .scrollbar-thumb-pink-500 { --scrollbar-thumb-color: #EC4899; }
+                .scrollbar-thumb-orange-500 { --scrollbar-thumb-color: #F97316; }
+                .scrollbar-thumb-lime-500 { --scrollbar-thumb-color: #84cc16; }
+                .scrollbar-thumb-indigo-500 { --scrollbar-thumb-color: #6366f1; }
+                
+                /* ĐỒNG BỘ THANH CUỘN GIAO DIỆN GAME (VÀNG/RÊU) */
+                .scrollbar-thumb-\[\#cda45e\] { --scrollbar-thumb-color: #cda45e; }
+                .scrollbar-thumb-\[\#8b1515\] { --scrollbar-thumb-color: #8b1515; }
+                .scrollbar-track-\[\#0a0f0a\] { --scrollbar-track-color: #0a0f0a; }
+                .scrollbar-track-transparent { --scrollbar-track-color: transparent; }
+                @keyframes dot-pulse {
+                    0%, 100% { opacity: 0.2; transform: scale(0.9); }
+                    50% { opacity: 1; transform: scale(1); }
+                }
+                .animate-dot-pulse {
+                    animation: dot-pulse 1.5s infinite ease-in-out;
+                    display: inline-block;
+                    width: 0.5em; 
+                    text-align: center;
+                }
+                .custom-scrollbar-gold::-webkit-scrollbar {
+                    width: 8px; /* Độ rộng của thanh cuộn */
+                }
+                .custom-scrollbar-gold::-webkit-scrollbar-track {
+                    background: transparent; /* Đường ray trong suốt */
+                }
+                .custom-scrollbar-gold::-webkit-scrollbar-thumb {
+                    background-color: #D4AF37; /* Màu vàng kim loại sang trọng */
+                    border-radius: 20px; /* Bo tròn hoàn toàn */
+                    border: 2px solid rgb(17 24 39); /* Tạo một đường viền nhỏ màu nền, giúp thanh cuộn trông tinh tế hơn */
+                }
+                .custom-scrollbar-gold::-webkit-scrollbar-thumb:hover {
+                    background-color: #FFD700; /* Màu vàng sáng hơn khi di chuột qua */
+                }
+                @keyframes htab-enter {
+                0% { transform: translate(-50%, 80%) scale(0.7); opacity: 0; filter: brightness(2) blur(10px); }
+                100% { transform: translate(-50%, 0) scale(1); opacity: 1; filter: brightness(1) blur(0); }
+                }
+                @keyframes htab-exit {
+                0% { transform: translate(-50%, 0) scale(1); opacity: 1; filter: brightness(1) blur(0); }
+                100% { transform: translate(-50%, 80%) scale(0.85); opacity: 0; filter: brightness(3) blur(15px); }
+                }
+                @keyframes bubble-enter {
+                    0% { transform: translate(-50%, -30px) scale(0.95); opacity: 0; }
+                    100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+                }
+                @keyframes bubble-exit {
+                    0% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+                    100% { transform: translate(-50%, -20px) scale(0.95); opacity: 0; }
+                }
+                .htab-avatar-enter {
+                    animation: htab-enter 0.9s cubic-bezier(0.18, 0.89, 0.32, 1.1) forwards;
+                }
+                .htab-avatar-exit {
+                    animation: htab-exit 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+                }
+                .htab-bubble-enter {
+                    animation: bubble-enter 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.15) forwards;
+                }
+                .htab-bubble-exit {
+                    animation: bubble-exit 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+                }
+
+            /* Ẩn các nút tăng/giảm mặc định của trình duyệt cho input number */
+                            input[type=number]::-webkit-inner-spin-button, 
+                            input[type=number]::-webkit-outer-spin-button { 
+                            -webkit-appearance: none; 
+                            margin: 0; 
+                            }
+                            input[type=number] {
+                            -moz-appearance: textfield;
+                            }
+
+            `}</style>
+            
+            {/* THAY ĐỔI 2: InitializationOverlay giờ đây hoạt động như một Modal */}
+
+            {/* Div 3: Container chịu trách nhiệm hiển thị và CĂN GIỮA nội dung */}
+             <div className={`flex flex-col ${currentScreen === 'gameplay' ? 'w-full h-screen' : 'items-center justify-center min-h-screen p-4 sm:p-6'} font-theme-body text-white`}>
+                
+                {/* Các thẻ input ẩn */}
+                <input type="file" ref={fileInputRef} onChange={handleLoadGame} accept=".json" className="hidden" />
+                <input type="file" ref={setupFileInputRef} onChange={handleLoadSetupFromFile} accept=".json" className="hidden" />
+
+            <>
+                    {currentScreen === 'initial' && (
+                        <InitialScreen
+                            setCurrentScreen={setCurrentScreen}
+                            setShowLoadGameModal={setShowLoadGameModal}
+                            savedGames={savedGames}
+                            apiKeyStatus={apiKeyStatus}
+                            userId={userId}
+                            setInputApiKey={setInputApiKey}
+                            apiKey={apiKey} 
+                            setShowApiModal={setShowApiModal}
+                            apiMode={apiMode}
+                            setShowUpdateLogModal={setShowUpdateLogModal}
+                            fileInputRef={fileInputRef} 
+                            uiTheme={gameSettings.uiTheme}
+                            isValidatedVip={isValidatedVip}
+                            isVerifyingVip={isVerifyingVip}
+                            onVerifyVipKey={(key) => handleVerifyVipKey(key, false)}
+                        />
+                    )}
+
+                    {currentScreen === 'gameplay' && (
+                            <GameplayScreen
+                                allowUnexpectedEvent={allowUnexpectedEvent}
+                                setAllowUnexpectedEvent={setAllowUnexpectedEvent}
+                                setGameSettings={setGameSettings}
+                                currentPlayStyle={gameSettings.playStyle}
+                                gameMode={gameMode}
+                                goHome={goHome}
+                                gameSettings={gameSettings}
+                                restartGame={restartGame}
+                                storyHistory={storyHistory}
+                                setStoryHistory={setStoryHistory}
+                                handleActionRequest={handleActionRequest}
+                                isLoading={isLoading} 
+                                currentStory={currentStory}
+                                choices={choices}
+                                handleChoice={handleChoice}
+                                formatStoryText={formatStoryText} 
+                                customActionInput={customActionInput}
+                                setCustomActionInput={setCustomActionInput}
+                                handleCustomAction={handleCustomAction}
+                                setShowCharacterInfoModal={setShowCharacterInfoModal}
+                                isProcessingAction={isProcessingAction}
+                                setIsProcessingAction={setIsProcessingAction}
+                                handleGenerateSuggestedActions={handleGenerateSuggestedActions}
+                                isGeneratingSuggestedActions={isGeneratingSuggestedActions}
+                                handleSaveGame={handleSaveGame}
+                                openCompanionInfoModal={openCompanionInfoModal}
+                                currentTurn={currentTurn}
+                                setShowCraftingModal={setShowCraftingModal}
+                                setShowSuggestedActionsModal={setShowSuggestedActionsModal}
+                                setShowCharacterEquipModal={setShowCharacterEquipModal}
+                                setShowInventoryModal={setShowInventoryModal}
+                                getRealmInfoFromLevel={getRealmInfoFromLevel}
+                                setShowQuickReferenceModal={setShowQuickReferenceModal}
+                                knowledge={knowledge} 
+                                visibleStoryCount={visibleStoryCount}
+                                loadMoreStory={loadMoreStory}
+                                messagesEndRef={messagesEndRef}
+                                setCharacterInfoInitialTab={setCharacterInfoInitialTab}
+                                setShowSkillManagementModal={setShowSkillManagementModal}
+                                formatTimeOfDay={formatTimeOfDay}
+                                setShowTradeModal={setShowTradeModal}
+                                combatTargetingState={combatTargetingState}
+                                setCombatTargetingState={setCombatTargetingState}
+                                activeCombatLoop={activeCombatLoop}
+                                combatEndSummary={combatEndSummary}
+                                finalizeCombatEnd={finalizeCombatEnd}
+                                openQuickLoreModal={openQuickLoreModal}
+                                companionCommandInput={companionCommandInput}
+                                setCompanionCommandInput={setCompanionCommandInput}
+                                fileInputRef={fileInputRef} 
+                                combatLog={combatLog}
+                                setShowCombatStatsModal={setShowCombatStatsModal} 
+                                handleTargetSelection={handleTargetSelection}
+                                handleForceExitStuckCombat={handleForceExitStuckCombat}
+                                setModalMessage={setModalMessage}
+                                combatUIState={combatUIState}
+                                setCombatUIState={setCombatUIState}
+                                processPlayerAction={processPlayerAction}
+                                setChoices={setChoices}
+                                setShowHandbookModal={setShowHandbookModal}
+                                showFunctionsModal={showFunctionsModal}
+                                setShowFunctionsModal={setShowFunctionsModal}
+                                showInfoModal={showInfoModal}
+                                setShowInfoModal={setShowInfoModal}
+                                showInteractionPanel={showInteractionPanel}
+                                setShowInteractionPanel={setShowInteractionPanel}
+                                handleTrackQuest={handleTrackQuest}
+                                activeTrade={activeTrade}
+                                saveGameProgress={saveGameProgress}
+                                currentGameId={currentGameId}
+                                setShowLoadGameModal={setShowLoadGameModal}
+                                handleClearImageCache={handleClearImageCache}
+                                onTogglePlayStyle={handleTogglePlayStyle}
+                                handleDeleteStoryItem={handleDeleteStoryItem}
+                                combatEnvironmentImage={combatEnvironmentImage}
+                                activeAnimation={activeAnimation}
+                                handleTogglePartyMember={handleTogglePartyMember}
+                                onSetTheme={handleSetTheme}
+                                bgmUrl={gameSettings.bgmUrl}
+                                bgmVolume={gameSettings.bgmVolume}
+                                isPlayingBgm={isPlayingBgm}
+                                onBgmUrlChange={handleBgmUrlChange}
+                                onBgmVolumeChange={handleBgmVolumeChange}
+                                onToggleBgm={toggleBgm}
+                                onOpenCacheManager={() => setShowLocalCacheManager(true)}
+                                onStartSandbox={handleStartSandboxCombat} 
+                                handleAwakenHtab={handleAwakenHtab} 
+                                isHtabChatActive={isHtabChatActive}
+                                setIsHtabChatActive={setIsHtabChatActive}
+                                currentHtabDialogue={currentHtabDialogue}
+                                handleHtabChat={handleHtabChat}
+                                htabExitPending={htabExitPending}
+                                htabPendingResumeData={htabPendingResumeData}
+                                resumeWorldFromHtab={resumeWorldFromHtab}
+                                showHtabInfoModal={showHtabInfoModal}
+                                setShowHtabInfoModal={setShowHtabInfoModal}
+                            />
+                    )}
+                </>
+                         
+                <div style={{ display: currentScreen === 'setup' ? 'block' : 'none' }}>
+                    <GameSetupScreen
+                        setupMode={setupMode} 
+                        setSetupMode={setSetupMode}
+                        goHome={goHome}
+                        gameSettings={gameSettings}
+                        handleGenerateSingleField={handleGenerateSingleField} 
+                        handleFillAllMissingFields={handleFillAllMissingFields} 
+                        handleInputChange={handleInputChange}
+                        initializeGame={initializeGame}
+                        isLoading={isLoading}
+                        handleGenerate={handleGenerate}
+                        isGenerating={isGenerating}
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        handleSaveSetup={handleSaveSetup}                 
+                        setupFileInputRef={setupFileInputRef}
+                        impromptuInput={impromptuInput}
+                        setImpromptuInput={setImpromptuInput}
+                        handleGenerateImpromptu={handleGenerateImpromptu}
+                        isGeneratingImpromptu={isGeneratingImpromptu}
+                        impromptuCharInput={impromptuCharInput}
+                        populateSettingsFromFanFic={populateSettingsFromFanFic}
+                        setImpromptuCharInput={setImpromptuCharInput}
+                        handleGenerateImpromptuCharacter={handleGenerateImpromptuCharacter}
+                        isGeneratingImpromptuChar={isGeneratingImpromptuChar}
+                        addInitialTrait={addInitialTrait}
+                        removeInitialTrait={removeInitialTrait}
+                        handleInitialTraitChange={handleInitialTraitChange}
+                        addInitialWorldElement={addInitialWorldElement}
+                        removeInitialWorldElement={removeInitialWorldElement}
+                        handleInitialElementChange={handleInitialElementChange}
+                        companionCommandInput={companionCommandInput} //
+                        setCompanionCommandInput={setCompanionCommandInput} //
+                        setShowHandbookModal={setShowHandbookModal}
+
+                    />
+                </div>
+
+            {startGameInitialization && (
+                <InitializationOverlay 
+                    steps={initializationSteps} 
+                    characterName={gameSettings.characterName}
+                    backgroundImageUrl="https://cdn.jsdelivr.net/gh/kimlove136-gif/anh-nen-game@589f1cca976efc2fa5d47891a81fccf232231650/31231%20(1).png"
+                    isProcessing={isLoading}
+                    onContinue={handleStartGameplay}
+                />
+            )}
+            {isHtabAwakening && (
+                <InitializationOverlay 
+                    steps={htabAwakeningSteps} 
+                    characterName={gameSettings.characterName}
+                    backgroundImageUrl="" 
+                    isProcessing={true}
+                    onContinue={() => {}} 
+                />
+            )}
+        <SaveSlotModal
+            show={showSaveSlotModal}
+            onClose={() => setShowSaveSlotModal(false)}
+            onConfirm={handleSlotSelection}
+            currentTurn={currentTurn}
+            savedGames={savedGames} 
+        />
+        <VipInputModal 
+            show={showVipInputModal}
+            onClose={() => setShowVipInputModal(false)}
+            isVerifying={isVerifyingVip}
+            onConfirm={(key) => handleVerifyVipKey(key, true)}
+        />
+
+        {showApiModal && (
+            <ApiSetupModal
+              inputApiKey={inputApiKey}
+              setInputApiKey={setInputApiKey}
+              apiKeyStatus={apiKeyStatus}
+              saveApiKey={saveApiKey}
+              testApiKey={testApiKey}
+              isLoading={isLoading} 
+              setShowApiModal={setShowApiModal}
+              apiKey={apiKey} 
+              setApiKeyStatus={setApiKeyStatus}
+              apiMode={apiMode}
+              setApiMode={setApiMode}
+              setModalMessage={setModalMessage}
+              playerCharacter={playerCharacter} 
+            />
+        )}
+
+       {showUpdateLogModal && ( 
+            <UpdateLogModal
+                show={showUpdateLogModal}
+                onClose={() => setShowUpdateLogModal(false)}
+                changelog={changelogData}
+                playerCharacter={playerCharacter} 
+            />
+        )}
+        {showTradeModal && (
+            <TradeModal
+                show={showTradeModal} 
+                onClose={() => setShowTradeModal(false)} 
+                playerInventory={playerCharacter.inventory}
+                activeTrade={activeTrade}
+                setActiveTrade={setActiveTrade}
+                handleConfirmSell={handleConfirmSell}
+                handleConfirmBuy={handleConfirmBuy} 
+                gameSettings={gameSettings}
+                knowledge={knowledge}
+                playerCharacter={playerCharacter}
+
+            />
+        )}
+      {showLoadGameModal && (
+        <LoadGameModal
+            savedGames={savedGames}
+            loadGame={loadGame}
+            setShowLoadGameModal={setShowLoadGameModal}
+            setConfirmationModal={setConfirmationModal}
+            setModalMessage={setModalMessage}
+            setSavedGames={setSavedGames}
+            cloudVipKey={cloudVipKey}
+        />
+        )}
+
+      {showCharacterInfoModal && (
+        <CharacterInfoModal
+            show={showCharacterInfoModal}
+            onClose={() => setShowCharacterInfoModal(false)}
+            characterId={selectedCharacterIdForModal} 
+            knowledge={knowledge}
+            initialTab={characterInfoInitialTab}
+            setknowledge={setknowledge}
+            gameSettings={gameSettings}
+            handleAllocateAp={handleAllocateAp}
+            handleUserUploadNpcAvatar={handleUserUploadNpcAvatar}
+            handleUserUploadPlayerAvatar={handleUserUploadPlayerAvatar}
+            handleTrackQuest={handleTrackQuest}
+            handleDebugUpdateCharacter={handleDebugUpdateCharacter}
+            setModalMessage={setModalMessage}
+            handleUpdateCharacterImages={handleUpdateCharacterImages} 
+            handleRegenerateSingleSprite={handleRegenerateSingleSprite}
+            handleAutoGenerateAvatar={handleAutoGenerateAvatar} 
+            generatingAvatars={generatingAvatars} 
+            generatingSprites={generatingSprites} 
+        />
+      )}
+{showQuickLoreModal && (
+    <QuickLoreModal
+        loreItem={quickLoreContent}
+        show={showQuickLoreModal}
+        onClose={() => setShowQuickLoreModal(false)}
+        calculateFinalStats={calculateFinalStats} 
+        knowledge={knowledge} 
+        getRealmInfoFromLevel={getRealmInfoFromLevel}
+        handleUserUploadNpcAvatar={handleUserUploadNpcAvatar}
+        handleUserUploadPlayerAvatar={handleUserUploadPlayerAvatar}
+        handleAutoGenerateAvatar={handleAutoGenerateAvatar}
+        handleAppraiseNpc={handleAppraiseNpc}
+        generatingAvatars={generatingAvatars}
+        handleRecruitCompanion={handleRecruitCompanion}
+        handleSongTu={handleSongTu}
+        isProcessingAction={isProcessingAction}
+    />
+)}
+      <SuggestionsModal
+        show={showSuggestionsModal.show}
+        title={showSuggestionsModal.title || "✨ Gợi Ý"}
+        suggestions={showSuggestionsModal.suggestions}
+        isLoading={showSuggestionsModal.isLoading}
+        onSelect={(suggestion) => {
+            if (showSuggestionsModal.fieldType === 'characterGoal') {
+                setGameSettings(prev => ({ ...prev, characterGoal: suggestion }));
+            } else if (showSuggestionsModal.fieldType) { 
+                setGameSettings(prev => ({ ...prev, [showSuggestionsModal.fieldType]: suggestion }));
+            }
+        }}
+        onClose={() => setShowSuggestionsModal({ show: false, fieldType: null, suggestions: [], isLoading: false, title: '' })}
+      />
+       <SuggestedActionsModal
+        show={showSuggestedActionsModal}
+        suggestions={suggestedActionsList}
+        isLoading={isGeneratingSuggestedActions}
+        onSelect={(action) => {
+            setCustomActionInput(action);
+            setShowSuggestedActionsModal(false);
+        }}
+        onClose={() => setShowSuggestedActionsModal(false)}
+      />
+        <CraftingModal
+            show={showCraftingModal}
+            onClose={() => setShowCraftingModal(false)}
+            inventory={playerCharacter.inventory}
+            handleStartFusion={handleStartFusion}
+            isProcessingAction={isProcessingAction}
+            playerCharacter={playerCharacter}
+            gameSettings={gameSettings}
+        />
+            <CharacterEquipModal
+                show={showCharacterEquipModal}
+                onClose={() => setShowCharacterEquipModal(false)}
+                knowledge={knowledge} //
+                gameSettings={gameSettings} // 
+                handleEquipItem={handleEquipItem}
+                handleUnequipItem={handleUnequipItem}
+                setModalMessage={setModalMessage} 
+
+            />
+            {showCombatStatsModal && (
+                <CombatStatsModal
+                    show={showCombatStatsModal}
+                    onClose={() => setShowCombatStatsModal(false)}
+                    combatants={activeCombatLoop ? activeCombatLoop.allCombatants : []}
+                    logEntries={combatLog}
+                />
+            )}
+    <LocalCacheManagerModal
+        show={showLocalCacheManager}
+        onClose={() => setShowLocalCacheManager(false)}
+        savedGames={savedGames}
+        currentGameId={currentGameId}
+        setModalMessage={setModalMessage}
+        setknowledge={setknowledge}
+    />
+    <QuickReferenceModal
+    show={showQuickReferenceModal}
+    onClose={() => setShowQuickReferenceModal(false)}
+    knowledge={knowledge}
+    onSelectForChat={(itemName) => setCustomActionInput(prevInput => `${prevInput ? ' ' : ''}${itemName}`)}
+    playerCharacter={playerCharacter}
+    calculateFinalStats={calculateFinalStats} 
+    openQuickLoreModal={openQuickLoreModal}
+    handleDeleteNpc={handleDeleteNpc}
+    handleCreateNpc={handleCreateNpc}
+    setConfirmationModal={setConfirmationModal}
+    handleRenameNpc={handleRenameNpc}
+    handleCreateLocation={handleCreateLocation}
+    handleUpdateLocation={handleUpdateLocation}
+    handleDeleteLocation={handleDeleteLocation}
+    />
+    <QuestNotificationModal
+        show={questNotification.show}
+        quest={questNotification.quest}
+        onClose={() => setQuestNotification({ show: false, quest: null })}
+      />
+
+      <MessageModal
+        show={modalMessage.show}
+        title={modalMessage.title}
+        content={modalMessage.content}
+        type={modalMessage.type}
+        onClose={() => setModalMessage({ show: false, title: '', content: '', type: 'info' })}
+      />
+    <ConfirmationModal
+        show={confirmationModal.show}
+        title={confirmationModal.title}
+        content={confirmationModal.content}
+        onConfirm={confirmationModal.onConfirm}
+        onCancel={confirmationModal.onCancel}
+        confirmText={confirmationModal.confirmText}
+        cancelText={confirmationModal.cancelText}
+        setConfirmationModal={setConfirmationModal}
+      />
+      {autosaveStatus && (
+          <div className={`fixed top-4 right-4 z-[9999] bg-[#101a10]/95 border px-4 py-2 text-xs font-bold tracking-widest uppercase shadow-lg flex items-center gap-2 ${autosaveStatus === 'error' ? 'border-red-500' : 'border-[#cda45e]'}`}>
+              {autosaveStatus === 'saving' ? (
+                  <>
+                      <div className="w-3.5 h-3.5 border-2 border-t-transparent border-[#cda45e] rounded-full animate-spin"></div>
+                      <span className="text-[#e8d3a1]">Đang ghi nhớ...</span>
+                  </>
+              ) : autosaveStatus === 'error' ? (
+                  <>
+                      <span className="text-red-500">✗</span>
+                      <span className="text-red-500">Lỗi tự động lưu (Dung lượng đầy)</span>
+                  </>
+              ) : (
+                  <>
+                      <span className="text-green-400">✓</span>
+                      <span className="text-green-400">Đã tự động lưu</span>
+                  </>
+              )}
+          </div>
+      )}
+      <GameOverModal 
+          show={showGameOverModal}
+          onRespawn={handleRespawn}
+          onLoadGame={() => {
+              setShowGameOverModal(false);
+              setShowLoadGameModal(true);
+          }}
+      />
+            {showHandbookModal && (
+                    <HandbookModal
+                        show={showHandbookModal}
+                        onClose={() => setShowHandbookModal(false)}
+                    />
+                )}
+                
+            {showHtabInfoModal && (
+                <HtabInfoModal
+                    show={showHtabInfoModal}
+                    onClose={() => setShowHtabInfoModal(false)}
+                    knowledge={knowledge}
+                    setknowledge={setknowledge}
+                    gameSettings={gameSettings}
+                    apiMode={apiMode}
+                    apiKey={apiKey}
+                    setModalMessage={setModalMessage}
+                    isProcessingAction={isProcessingAction}
+                    setIsProcessingAction={setIsProcessingAction}
+                    onHtabGacha={handleHtabGacha}
+                    onHtabBlessing={handleHtabBlessing}
+                    onHtabDonate={handleHtabDonate}
+                    onStartHtabConversation={async () => {
+                        const htabObj = knowledge.htab || {};
+                        const currentLvl = htabObj.level || 1;
+                        const maxSta = HTAB_MAX_STA[currentLvl] || 100;
+                        const curEnergy = htabObj.currentEnergy ?? maxSta;
+                        const affinity = htabObj.affinity || 0;
+
+                        if (curEnergy < 40) {
+                            setModalMessage({ show: true, title: "Kiệt Sức", content: `Hệ thống cần đạt trên 40 năng lượng để thực hiện liên kết Gọi Dậy (Hiện tại: ${curEnergy}/${maxSta} STA). Hãy Cung Phụng thêm để bồi dưỡng.`, type: "error" });
+                            return;
+                        }
+
+                        const successRate = affinity;
+                        const dice = Math.random() * 100;
+                        const isSuccess = dice < successRate;
+
+                        setIsProcessingAction(true);
+                        if (isSuccess) {
+                            // Sao lưu lựa chọn dã ngoại thực tại trước khi vào kết nối
+                            setBackupChoices(choices);
+                            setBackupCustomActionInput(customActionInput);
+
+                            setknowledge(prev => {
+                                const newK = JSON.parse(JSON.stringify(prev));
+                                if (newK.htab) {
+                                    newK.htab.currentEnergy = Math.max(0, curEnergy - 30);
+                                }
+                                return newK;
+                            });
+
+                            setIsHtabChatActive(true);
+                            setModalMessage({ show: true, title: "Gọi Dậy Thành Công", content: `Đã kết nối Thức Hải thành công! Đang đánh thức linh thức của Hệ thống...`, type: "success" });
+
+                            const lastStoryItem = storyHistory.filter(item => item.type === 'story').pop()?.content || "Ngươi đang ở giữa hành trình thám hiểm.";
+                            const lastStoryText = typeof lastStoryItem === 'string' ? lastStoryItem : JSON.stringify(lastStoryItem);
+                            
+                            await triggerSystemActiveAppearance('summon', lastStoryText);
+                        } else {
+                            setknowledge(prev => {
+                                const newK = JSON.parse(JSON.stringify(prev));
+                                if (newK.htab) {
+                                    newK.htab.currentEnergy = Math.max(0, curEnergy - 10);
+                                }
+                                return newK;
+                            });
+                            setModalMessage({ show: true, title: "Gọi Dậy Thất Bại", content: `Linh ý dao động bất ổn, kết nối Thức Hải bất thành! (Tiêu tốn 10 năng lượng của Hệ thống).`, type: "error" });
+                        }
+                        setIsProcessingAction(false);
+                    }}
+                    adventureTurnCount={adventureTurnCount}
+                />
+            )}
+
+                <IntroModal
+                    show={showIntroModal}
+                    onClose={() => setShowIntroModal(false)}
+                    characterName={gameSettings.characterName}
+                />
+                <VipWelcomeModal
+                    show={showVipWelcomeModal}
+                    ownerName={vipOwnerName}
+                    onClose={() => setShowVipWelcomeModal(false)}
+                />
+                {showSkillManagementModal && (
+                        <SkillManagementModal
+                            show={showSkillManagementModal}
+                            onClose={() => setShowSkillManagementModal(false)}
+                            knowledge={knowledge}
+                            gameSettings={gameSettings} 
+                            handleEquipSkill={handleEquipSkill}
+                            handleUnequipSkill={handleUnequipSkill}
+                            handleForgetSkill={handleForgetSkill}
+                            onGenerateVfxImage={handleGenerateVfxImage}
+                            onCustomSkillCreate={(newSkill, charId, sacrificeSkillId) => {
+                            setknowledge(prev => {
+                                const newK = JSON.parse(JSON.stringify(prev));
+                                const char = newK.characters.find(c => c.id === charId);
+                                if (char) {
+                                    if (sacrificeSkillId === 'basic_attack') {
+                                        char.basicAttackVfx = newSkill.visual_effects || newSkill.effects?.[0]?.action?.visual_effects;
+                                    } else {
+                                        if (!char.learnedSkills) char.learnedSkills = [];
+                                        if (sacrificeSkillId) {
+                                            char.learnedSkills = char.learnedSkills.filter(s => s.id !== sacrificeSkillId);
+                                        }
+                                        char.learnedSkills.push(newSkill);
+                                    }
+                                }
+                                return newK;
+                            });
+                            if (sacrificeSkillId === 'basic_attack') {
+                                setModalMessage({ show: true, title: "Tùy Chỉnh Thành Công", content: `Đã cập nhật hiệu ứng hình ảnh (VFX) cho đòn Đánh Thường!`, type: "success" });
+                            } else {
+                                setModalMessage({ show: true, title: "Lĩnh Ngộ Kỹ Năng", content: `Tuyệt kỹ [${newSkill.Name}] đã được đưa vào kho tiềm thức!`, type: "success" });
+                            }
+                        }}
+                        />
+                    )}
+
+            <QuantitySelector 
+                data={quantitySelector}
+                onConfirm={quantitySelector.onConfirm}
+                onCancel={quantitySelector.onCancel}
+            />
+
+            <InventoryModal
+                        show={showInventoryModal}
+                        onClose={() => setShowInventoryModal(false)}
+                        playerCharacter={playerCharacter} 
+                        handleDiscardItem={handleDiscardItem}
+                        calculateMaxCarryWeight={calculateMaxCarryWeight}
+                        calculateCurrentWeight={calculateCurrentWeight}
+                        gameSettings={gameSettings} 
+                    />
+            </div>
+        </div>
+    </div>
+  );
+};
+
+
+export default App;
