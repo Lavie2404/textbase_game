@@ -1,4 +1,3 @@
-// @ts-nocheck
 //Đây là code của tôi viết trên google canvas để tạo ứng dụng.
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo  } from 'react';
 import { initializeApp, getApps, getApp, deleteApp } from 'firebase/app';
@@ -33035,4 +33034,4 @@ ${emotionDescriptions.join('\n')}
                     const rawEmo = emotionMatch[1].toLowerCase().trim();
                     if (['smile', 'happy', 'teasing'].includes(rawEmo)) detectedEmotion = 'smile';
                     else if (['sad', 'melancholy'].includes(rawEmo)) detectedEmotion = 'sad';
-                    el
+                    else if (['angry'
