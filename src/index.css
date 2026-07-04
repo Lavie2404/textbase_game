@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cinzel", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Elegant Dark Color Overrides */
+  --color-slate-950: #0b0c10;
+  --color-slate-900: #121212;
+  --color-slate-800: #1f2833;
+  --color-slate-700: #2c3540;
+  --color-slate-600: #45a29e;
+  --color-slate-500: #45a29e;
+  --color-slate-400: #c5c6c7;
+  --color-slate-300: #c5c6c7;
+  --color-slate-200: #e2e4e6;
+  --color-slate-100: #ffffff;
+
+  --color-amber-500: #66fcf1;
+  --color-amber-400: #45a29e;
+  --color-amber-600: #45a29e;
+  --color-amber-300: #66fcf1;
+}
+
+/* Custom scrollbar for immersive console feeling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s infinite;
+}
+
+/* Hiệu ứng 7 màu cầu vồng cho phẩm chất "Thần Thoại" (cao hơn Huyền Thoại) */
+@keyframes rarity-mythical-shift {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+.rarity-mythical {
+    background-image: linear-gradient(90deg, #ff0000, #ff9900, #ffee00, #33ff33, #00e5ff, #3366ff, #cc33ff, #ff0000);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: rarity-mythical-shift 3s linear infinite;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.6));
+}
+.rarity-mythical-dot {
+    background-image: linear-gradient(90deg, #ff0000, #ff9900, #ffee00, #33ff33, #00e5ff, #3366ff, #ff0000);
+    background-size: 200% auto;
+    animation: rarity-mythical-shift 3s linear infinite;
+}

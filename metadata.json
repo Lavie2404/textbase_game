@@ -1,0 +1,6 @@
+{
+  "name": "Game Nhập Vai Văn Bản",
+  "description": "Một trò chơi nhập vai văn bản (Text-based RPG) huyền thoại với hệ thống phân bổ điểm AP, hệ thống độ hiếm trang bị và chiến đấu sinh động.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
