@@ -1,9 +1,5 @@
 //Đây là code của tôi viết trên google canvas để tạo ứng dụng.
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo  } from 'react';
-import { initializeApp, getApps, getApp, deleteApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc, serverTimestamp, onSnapshot, query, where, orderBy, limit, writeBatch } from 'firebase/firestore';
-import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { GAME_CONFIG } from './gameConfig.js';
 
 const Cog6ToothIcon = ({className="w-5 h-5"}) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.905 1.523L9.017 8.429a1.875 1.875 0 0 1-.445 1.035l-2.833 2.833a1.875 1.875 0 0 0 0 2.652l2.833 2.833c.28.28.626.445.994.445s.714-.165.994-.445l2.832-2.833a1.875 1.875 0 0 1 1.036-.445l4.906-.153c.94-.03 1.686-.786 1.686-1.727V9.28c0-.94-.747-1.697-1.686-1.727l-4.906-.153a1.875 1.875 0 0 1-1.036-.445l-2.832-2.833A1.875 1.875 0 0 0 11.078 2.25ZM12.75 9a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5Z" clipRule="evenodd" /></svg>;
@@ -301,14 +297,13 @@ const RingIcon = ({className="w-5 h-5 mr-1"}) => <svg xmlns="http://www.w3.org/2
 const BookOpenIcon = ({className="w-5 h-5 mr-1"}) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" d="M1.5 5.625c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v12.75c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 18.375V5.625ZM3 16.035a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75H3.75a.75.75 0 0 1-.75-.75v-1.5Z" clipRule="evenodd" /><path fillRule="evenodd" d="M12.97 10.97a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1-1.06 1.06l-4.5-4.5a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /><path fillRule="evenodd" d="M14.47 5.03a.75.75 0 0 1 1.06 0l6 6a.75.75 0 0 1 0 1.06L18.06 17.5a.75.75 0 0 1-1.06 0l-1.5-1.5a.75.75 0 0 1 0-1.06l1.5-1.5a.75.75 0 0 0 0-1.06l-3-3a.75.75 0 0 0-1.06 0l-1.5 1.5a.75.75 0 0 1-1.06 0l-1.5-1.5a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 0 0 0 1.06L7.94 16.5a.75.75 0 0 1-1.06 0L5.38 14.94a.75.75 0 0 1 0-1.06l4.5-4.5a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" /><path fillRule="evenodd" d="M9.94 2.03a.75.75 0 0 1 1.06 0l6 6a.75.75 0 0 1 0 1.06l-2.25 2.25a.75.75 0 0 1-1.06 0L14.44 10a.75.75 0 0 0-1.06 0l-3-3a.75.75 0 0 0-1.06 0l-2.25 2.25a.75.75 0 0 1-1.06 0l-1.5-1.5a.75.75 0 0 1 0-1.06l6-6Z" clipRule="evenodd" /></svg>;
 
 
-// Firebase Config
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+const getOrCreateLocalUserId = () => {
+    let id = localStorage.getItem('local_user_id');
+    if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem('local_user_id', id);
+    }
+    return id;
 };
 
 const EXTENDED_EXPRESSIONS = {
@@ -363,7 +358,7 @@ const LoadGameAvatar = ({ game }) => {
     );
 };
 
-const LoadGameModal = ({ savedGames, loadGame, setShowLoadGameModal, setConfirmationModal, userId, setModalMessage, db, appId, setSavedGames, cloudVipKey }) => (
+const LoadGameModal = ({ savedGames, loadGame, setShowLoadGameModal, setConfirmationModal, setModalMessage, setSavedGames, cloudVipKey }) => (
     <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50 animate-fade-in">
       <div className="bg-[#162216] p-6 shadow-[0_0_50px_rgba(10,20,10,1)] w-full max-w-2xl max-h-[85vh] flex flex-col border border-[#cda45e]/50 relative">
         <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#cda45e] pointer-events-none"></div>
@@ -464,7 +459,7 @@ const LoadGameModal = ({ savedGames, loadGame, setShowLoadGameModal, setConfirma
                                                 setSavedGames(prev => prev.filter(g => g.id !== game.id));
                                             }
                                         } else {
-                                            await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/games`, game.id));
+                                            await deleteIndexedDBKey(game.id);
                                             if (setSavedGames) {
                                                 setSavedGames(prev => prev.filter(g => g.id !== game.id));
                                             }
@@ -498,48 +493,6 @@ const LoadGameModal = ({ savedGames, loadGame, setShowLoadGameModal, setConfirma
     </div>
 );
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
-
-
-// --- KHỞI TẠO FIREBASE THỨ 2 DÀNH RIÊNG CHO PVP (ĐỘNG) ---
-let pvpApp = null;
-let pvpDb = null;
-let pvpStorage = null;
-
-const initializeDynamicFirebase = (configStr) => {
-    try {
-        const configObject = {};
-        const regex = /([a-zA-Z0-9_]+)\s*:\s*["']([^"']+)["']/g;
-        let match;
-        while ((match = regex.exec(configStr)) !== null) {
-            configObject[match[1]] = match[2];
-        }
-
-        if (!configObject.apiKey || !configObject.projectId) {
-            return { success: false, error: "Không tìm thấy cấu hình hợp lệ trong văn bản." };
-        }
-
-        const existingApps = getApps();
-        const existingPvPApp = existingApps.find(app => app.name === "PvPDatabase");
-        if (existingPvPApp) {
-            deleteApp(existingPvPApp);
-        }
-
-        pvpApp = initializeApp(configObject, "PvPDatabase");
-        pvpDb = getFirestore(pvpApp);
-        pvpStorage = getStorage(pvpApp);
-
-        return { success: true };
-    } catch (err) {
-        console.error("Lỗi khởi tạo Firebase PvP:", err);
-        return { success: false, error: err.message };
-    }
-};
-
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'ai-text-adventure-simulator-vn';
 
 
 // Changelog Data (Updated Structure)
@@ -3055,6 +3008,9 @@ const processSkill = (caster, designatedTarget, allCombatants, skillData, curren
     }
 
     let lastTargets = [];
+    // Tổng sát thương đã gây ra bởi các effect 'damage' TRƯỚC ĐÓ trong CÙNG một lần dùng chiêu này
+    // (VD: chiêu AOE đánh 4 mục tiêu rồi hồi máu bằng 100% "sát thương gây ra" -> phải là TỔNG của cả 4 đòn, không phải 0/đòn cuối).
+    let totalDamageDealtInSkill = 0;
     const effectsToProcess = skillData.effects || (skillData.effectsString ? parseEffectsString(skillData.effectsString) : []);
 
     if (isEnemy && effectsToProcess.length === 0) {
@@ -3112,6 +3068,7 @@ const processSkill = (caster, designatedTarget, allCombatants, skillData, curren
                         changeset.stateChanges.push({ targetId: target.id, change: { hp: -finalDamage } });
                         if (skillData.skillType === 'item_as_skill') logBase.damageDealt.item = finalDamage;
                         else logBase.damageDealt.direct = finalDamage;
+                        totalDamageDealtInSkill += finalDamage;
                         messageParts.push(`gây ${finalDamage} sát thương`);
                     } else {
                         messageParts.push(`gây 0 sát thương (bị phòng ngự cản phá hoàn toàn)`);
@@ -3131,8 +3088,8 @@ const processSkill = (caster, designatedTarget, allCombatants, skillData, curren
                 }
                 
                 case 'heal': {
-                    let rawHealAmount = calculateEffectPower(action.power_components, finalCaster, finalTarget);
-                    
+                    let rawHealAmount = calculateEffectPower(action.power_components, finalCaster, finalTarget, { lastDamageDealt: totalDamageDealtInSkill });
+
                     if (!rawHealAmount || isNaN(rawHealAmount) || rawHealAmount <= 0) {
                         rawHealAmount = (finalCaster.maxhp || 200) * 0.15;
                     }
@@ -3311,7 +3268,7 @@ const addSkillExp = (skill, amount) => {
 };
 
 class CombatLoop {
-    constructor(combatants, onStateChange, onActionRequest, onCombatEnd, combatType, sharedCooldowns, onAnimateAction, onPvPActionGenerated, onCallCombatAI) {
+    constructor(combatants, onStateChange, onActionRequest, onCombatEnd, combatType, sharedCooldowns, onAnimateAction, onCallCombatAI) {
         this.allCombatants = JSON.parse(JSON.stringify(combatants));
         this.isPlayerPresent = this.allCombatants.some(c => c.isPlayer);
         this.turnOrderQueue = [];
@@ -3322,8 +3279,7 @@ class CombatLoop {
         this.onActionRequest = onActionRequest;
         this.onCombatEnd = onCombatEnd;
         this.sharedCooldowns = { ...(sharedCooldowns || { tactical: 0, potion: 0 }) };
-        this.onAnimateAction = onAnimateAction; 
-        this.onPvPActionGenerated = onPvPActionGenerated; 
+        this.onAnimateAction = onAnimateAction;
         this.onCallCombatAI = onCallCombatAI; // Ghi nhận hàm gọi AI Combat siêu nhẹ
         this.combatEnded = false;
         this.nextCompanionCommand = null;
@@ -3595,25 +3551,6 @@ class CombatLoop {
         }
         this.prePrefetchNextTurnAI(mainChangeset);
 
-        if (this.combatType === 'PvP' && !preCalculatedChangeset) {
-            if (this.onAnimateAction) {
-                await this.onAnimateAction({ casterId: caster.id, targetId: designatedTargetId, skill: skillData, changeset: mainChangeset });
-            }
-            if (this.onPvPActionGenerated) {
-                this.onPvPActionGenerated({ skillData, designatedTargetId, changeset: mainChangeset });
-            }
-            this.applyChangeset(mainChangeset);
-            this.onStateChange(this.allCombatants, mainChangeset.logs, mainChangeset);
-            
-            if (this.checkCombatEnd()) {
-                this.processEndOfTurnEffects(caster.id);
-                return; 
-            }
-            this.processEndOfTurnEffects(caster.id);
-            if (!this.combatEnded) this.nextTurn();
-            return;
-        }
-
         targetsBeforeAction = mainChangeset.stateChanges
             .map(change => this.allCombatants.find(c => c.id === change.targetId))
             .filter(Boolean)
@@ -3724,8 +3661,6 @@ class CombatLoop {
     prePrefetchNextTurnAI(mainChangeset) {
         this.preFetchedActionPromise = null;
         this.preFetchedActionId = null;
-
-        if (this.combatType === 'PvP') return; 
 
         const tempCombatants = JSON.parse(JSON.stringify(this.allCombatants));
         const tempQueue = [...this.turnOrderQueue];
@@ -4471,235 +4406,6 @@ const LoadingEllipsis = () => (
     </div>
 );
 
-const PvPLobbyModal = ({ show, onClose, pvpRoom, pvpRoomData, pvpRoomInput, setPvpRoomInput, onCreateRoom, onJoinRoom, onCancelRoom, isProcessingAction, onStartPvPCombat, userId }) => {
-    const [availableRooms, setAvailableRooms] = useState([]);
-    const [wardrobeCheck, setWardrobeCheck] = useState({ show: false, action: null, roomId: null });
-
-    useEffect(() => {
-        if (!show) return;
-        const q = query(collection(pvpDb, 'pvp_rooms'), where('status', '==', 'waiting'));
-        
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const rooms = [];
-            const now = new Date();
-            
-            // Đã đổi 'doc' thành 'roomDoc' để tránh xung đột với thư viện Firebase
-            snapshot.forEach(roomDoc => {
-                const data = roomDoc.data();
-                
-                // Bẫy lỗi an toàn nếu phòng bị lỗi thiếu createdAt
-                if (!data.createdAt) {
-                    rooms.push({ id: roomDoc.id, hostName: data.host?.name || 'Vô Danh', createdAt: null });
-                    return;
-                }
-
-                const createdAtDate = new Date(data.createdAt);
-                const diffHours = (now - createdAtDate) / (1000 * 60 * 60);
-
-                // Dọn rác: Phòng chờ bị treo hơn 2 tiếng sẽ bị xóa ngầm
-                if (diffHours > 2) {
-                    deleteDoc(doc(pvpDb, `pvp_rooms/${roomDoc.id}`)).catch(()=>{});
-                } else {
-                    rooms.push({ id: roomDoc.id, hostName: data.host?.name || 'Vô Danh', createdAt: data.createdAt });
-                }
-            });
-            
-            // Sắp xếp phòng mới nhất lên đầu, đề phòng có phòng null thời gian
-            rooms.sort((a, b) => {
-                if (!a.createdAt) return 1;
-                if (!b.createdAt) return -1;
-                return new Date(b.createdAt) - new Date(a.createdAt);
-            });
-            
-            setAvailableRooms(rooms);
-        }, (error) => {
-            console.error("Lỗi đường truyền Firebase PvP:", error);
-        });
-        
-        return () => unsubscribe();
-    }, [show]);
-
-    if (!show) return null;
-
-    // Logic kiểm tra xem có Model trên mạng chưa
-    const handlePreActionCheck = async (actionType, roomId = null) => {
-        try {
-            const wardrobeRef = collection(pvpDb, `pvp_wardrobes/${userId}/party`);
-            const snap = await getDocs(wardrobeRef);
-            
-            if (!snap.empty) {
-                // Đã có data -> Bật bảng hỏi
-                setWardrobeCheck({ show: true, action: actionType, roomId });
-            } else {
-                // Lần đầu chơi PvP -> Ép tải lên luôn
-                executeAction(actionType, roomId, true);
-            }
-        } catch (error) {
-            console.error("Lỗi khi kiểm tra kho ảnh PvP:", error);
-            // Nếu lỗi mạng, vẫn ráng cho vào phòng (tải ảnh mới mặc định)
-            executeAction(actionType, roomId, true);
-        }
-    };
-
-    const executeAction = (action, roomId, shouldUpdate) => {
-        setWardrobeCheck({ show: false, action: null, roomId: null });
-        if (action === 'create') onCreateRoom(shouldUpdate);
-        else if (action === 'join') onJoinRoom(roomId, shouldUpdate);
-    };
-
-    const renderVSScreen = () => {
-        if (!pvpRoomData) return null;
-        const isHost = pvpRoom.role === 'host';
-        const hostReady = pvpRoomData.hostReady;
-        const guestReady = pvpRoomData.guestReady;
-        const bothReady = hostReady && guestReady;
-
-        return (
-            <div className="flex flex-col h-full animate-fade-in">
-                <div className="flex justify-between items-center bg-[#0a0f0a] border border-[#cda45e]/30 p-4 mb-4">
-                    {/* BÊN HOST */}
-                    <div className="flex flex-col items-center w-1/3">
-                        <div className="relative">
-                            <div className="w-16 h-16 border-2 border-sky-400 flex items-center justify-center bg-gray-800 text-2xl font-bold text-white overflow-hidden">
-                                {pvpRoomData.host?.name.charAt(0)}
-                            </div>
-                            <div className="absolute -bottom-2 -right-2 bg-black rounded-full">
-                                {hostReady ? <CheckIcon className="w-6 h-6 text-green-400"/> : <div className="w-5 h-5 m-0.5 border-2 border-t-transparent border-sky-400 rounded-full animate-spin"></div>}
-                            </div>
-                        </div>
-                        <p className="text-sky-400 font-bold mt-2 text-sm">{pvpRoomData.host?.name}</p>
-                        <span className="text-[10px] text-gray-500">Chủ phòng</span>
-                    </div>
-
-                    <div className="w-1/3 text-center">
-                        <p className="text-3xl font-bold italic text-red-500 font-protest" style={{textShadow: '0 0 10px red'}}>VS</p>
-                    </div>
-
-                    {/* BÊN GUEST */}
-                    <div className="flex flex-col items-center w-1/3">
-                        {pvpRoomData.guest ? (
-                            <>
-                                <div className="relative">
-                                    <div className="w-16 h-16 border-2 border-red-400 flex items-center justify-center bg-gray-800 text-2xl font-bold text-white overflow-hidden">
-                                        {pvpRoomData.guest.name.charAt(0)}
-                                    </div>
-                                    <div className="absolute -bottom-2 -left-2 bg-black rounded-full">
-                                        {guestReady ? <CheckIcon className="w-6 h-6 text-green-400"/> : <div className="w-5 h-5 m-0.5 border-2 border-t-transparent border-red-400 rounded-full animate-spin"></div>}
-                                    </div>
-                                </div>
-                                <p className="text-red-400 font-bold mt-2 text-sm">{pvpRoomData.guest.name}</p>
-                                <span className="text-[10px] text-gray-500">Khách</span>
-                            </>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-full opacity-50">
-                                <UserCircleIcon className="w-16 h-16 text-gray-500 mb-2"/>
-                                <p className="text-xs">Đang chờ đối thủ...</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="text-center mb-6">
-                    <p className="text-[#a3b8a3] text-xs">Mã Phòng: <span className="font-mono text-[#cda45e] font-bold tracking-widest text-lg">{pvpRoom.id}</span></p>
-                    {!bothReady && pvpRoomData.guest && <p className="text-yellow-400 text-xs mt-2 animate-pulse">Đang tải và đồng bộ ảnh thực thể hai bên...</p>}
-                </div>
-
-                <div className="mt-auto space-y-3">
-                    {isHost ? (
-                        <button 
-                            onClick={onStartPvPCombat} 
-                            disabled={!bothReady || isProcessingAction}
-                            className="w-full bg-[#1b2a1b] border border-[#cda45e] hover:bg-[#cda45e]/20 text-[#cda45e] font-bold py-4 uppercase tracking-widest text-sm transition-colors disabled:opacity-30 disabled:border-gray-600 disabled:text-gray-500"
-                        >
-                            {bothReady ? 'Khai Chiến' : 'Chờ Tải Hoàn Tất...'}
-                        </button>
-                    ) : (
-                        <div className="w-full bg-[#0a0f0a] border border-gray-600 text-gray-400 font-bold py-4 uppercase tracking-widest text-sm text-center">
-                            {bothReady ? 'Chờ chủ phòng Khai Chiến...' : 'Đang Tải Dữ Liệu...'}
-                        </div>
-                    )}
-                    
-                    <button onClick={onCancelRoom} className="w-full bg-transparent border border-[#8b1515] text-[#ff4d4d] hover:bg-[#8b1515]/20 font-bold py-3 uppercase tracking-widest text-sm transition-colors">
-                        Hủy & Rời Phòng
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-[200] animate-fade-in">
-            <div className="bg-[#162216] p-8 shadow-[0_0_40px_rgba(205,164,94,0.3)] w-full max-w-lg border border-[#cda45e]/50 relative flex flex-col min-h-[400px] max-h-[90vh]">
-                <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#cda45e]"></div>
-                <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#cda45e]"></div>
-                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#cda45e]"></div>
-                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#cda45e]"></div>
-
-                <h3 className="flex-shrink-0 text-2xl font-bold text-[#cda45e] mb-6 tracking-widest uppercase text-center border-b border-[#cda45e]/30 pb-4" style={{ fontFamily: "'Noto Serif Vietnamese', serif" }}>
-                    Đấu Trường Sinh Tử
-                </h3>
-
-                {wardrobeCheck.show ? (
-                    <div className="flex flex-col flex-grow items-center justify-center text-center animate-bounce-in">
-                        <UserGroupIcon className="w-16 h-16 text-[#cda45e] mb-4"/>
-                        <h4 className="text-xl font-bold text-[#e8d3a1] mb-2">Phát Hiện Kho Ảo Ảnh</h4>
-                        <p className="text-sm text-[#8ba888] mb-8 leading-relaxed">
-                            Ngươi đã có sẵn hình hài nhân vật trên Thiên Giới. Dùng lại ảnh cũ sẽ giúp ghép trận <strong>ngay lập tức</strong>. Tải ảnh mới sẽ mất thêm vài giây.
-                        </p>
-                        <button onClick={() => executeAction(wardrobeCheck.action, wardrobeCheck.roomId, false)} className="w-full bg-[#1b2a1b] border border-[#cda45e] hover:bg-[#cda45e]/20 text-[#cda45e] font-bold py-3 uppercase tracking-widest text-sm mb-3">
-                            Dùng Ảnh Cũ (Siêu Tốc)
-                        </button>
-                        <button onClick={() => executeAction(wardrobeCheck.action, wardrobeCheck.roomId, true)} className="w-full bg-transparent border border-[#8ba888] hover:border-[#e8d3a1] text-[#8ba888] hover:text-[#e8d3a1] font-bold py-3 uppercase tracking-widest text-sm mb-4">
-                            Tải Ảnh Mới
-                        </button>
-                        <button onClick={() => setWardrobeCheck({show:false, action:null, roomId:null})} className="text-gray-500 hover:text-white underline text-xs">Quay lại</button>
-                    </div>
-                ) : pvpRoom ? renderVSScreen() : (
-                    <div className="flex flex-col flex-grow min-h-0">
-                        <button onClick={() => handlePreActionCheck('create')} disabled={isProcessingAction} className="w-full bg-[#1b2a1b] border border-[#cda45e] hover:bg-[#cda45e]/20 text-[#cda45e] font-bold py-4 uppercase tracking-widest text-sm shadow-[inset_0_0_10px_rgba(205,164,94,0.1)] transition-colors disabled:opacity-50 flex-shrink-0">
-                            Lập Chiến Thư (Tạo Phòng Mới)
-                        </button>
-                        
-                        <div className="flex items-center gap-4 my-5 flex-shrink-0">
-                            <div className="flex-1 h-px bg-[#cda45e]/20"></div>
-                            <span className="text-[#8ba888] text-xs font-bold uppercase tracking-widest">Danh Sách Chiến Thư</span>
-                            <div className="flex-1 h-px bg-[#cda45e]/20"></div>
-                        </div>
-
-                        <div className="flex-grow overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-[#cda45e] scrollbar-track-[#0a0f0a]">
-                            {availableRooms.length > 0 ? (
-                                availableRooms.map(room => (
-                                    <div key={room.id} className="bg-[#0a0f0a] border border-[#cda45e]/30 p-3 flex justify-between items-center hover:border-[#cda45e] transition-colors">
-                                        <div>
-                                            <p className="text-[#e8d3a1] font-bold text-sm tracking-wider" style={{ fontFamily: "'Noto Serif Vietnamese', serif" }}>Lôi đài của <span className="text-[#cda45e]">{room.hostName}</span></p>
-                                            <p className="text-[#8ba888] text-[10px] font-mono mt-1">Mã: {room.id}</p>
-                                        </div>
-                                        <button onClick={() => handlePreActionCheck('join', room.id)} disabled={isProcessingAction} className="bg-transparent border border-[#cda45e]/50 hover:bg-[#1b2a1b] text-[#cda45e] text-xs font-bold px-4 py-2 uppercase tracking-widest transition-colors">
-                                            Ứng Chiến
-                                        </button>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
-                                    <CrosshairIcon className="w-10 h-10 text-[#8ba888] mb-3" />
-                                    <p className="text-[#8ba888] italic text-sm">Chưa có ai lập lôi đài.</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="mt-5 flex gap-2 flex-shrink-0">
-                            <input type="text" value={pvpRoomInput} onChange={(e) => setPvpRoomInput(e.target.value.toUpperCase())} placeholder="Hoặc nhập mã tay..." className="flex-grow p-3 text-center font-mono tracking-[0.2em] bg-[#0a0f0a] border border-[#8ba888]/40 text-[#e8d3a1] focus:border-[#cda45e] outline-none text-sm" maxLength={6} />
-                            <button onClick={() => handlePreActionCheck('join', pvpRoomInput)} disabled={isProcessingAction || pvpRoomInput.length < 6} className="bg-[#101a10] border border-[#8ba888]/50 text-[#e8d3a1] font-bold px-4 uppercase tracking-widest text-sm">Vào</button>
-                        </div>
-                        <div className="pt-4 mt-4 border-t border-[#cda45e]/20 flex-shrink-0">
-                            <button onClick={onClose} className="w-full text-[#8ba888] hover:text-[#cda45e] text-xs font-bold uppercase tracking-widest transition-colors">Trở về</button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
 
 const AnimatedButton = React.memo(({ onClick, disabled, className, children, delay, isPrimary }) => (
     <div className="w-full relative opacity-0 animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
@@ -9993,7 +9699,7 @@ const GameplayScreen = ({
     handleForceExitStuckCombat,
     openQuickLoreModal, combatLog, setShowCombatStatsModal,
     fileInputRef, companionCommandInput, setCompanionCommandInput,
-    activeCombatLoop, combatUIState, setCombatUIState, 
+    activeCombatLoop, combatEndSummary, finalizeCombatEnd, combatUIState, setCombatUIState,
     setModalMessage, processPlayerAction, setIsProcessingAction,
     setChoices, setShowHandbookModal,
     showFunctionsModal, setShowFunctionsModal,
@@ -10002,10 +9708,10 @@ const GameplayScreen = ({
     handleTrackQuest,
     activeTrade, handleTogglePartyMember,
     saveGameProgress, handleDeleteStoryItem,
-    currentGameId, combatEnvironmentImage,  onOpenPvP,
+    currentGameId, combatEnvironmentImage,
     currentPlayStyle, onTogglePlayStyle, handleClearImageCache,
-    activeAnimation, pvpRoom, showFirebaseModal, setShowFirebaseModal, onStartSandbox,
-    pvpTurnTimeLeft, setPvpTurnTimeLeft, onSetTheme, onOpenThemeEditor, onOpenCacheManager, handleAwakenHtab, isHtabChatActive, setIsHtabChatActive, currentHtabDialogue, handleHtabChat,
+    activeAnimation, onStartSandbox,
+    onSetTheme, onOpenThemeEditor, onOpenCacheManager, handleAwakenHtab, isHtabChatActive, setIsHtabChatActive, currentHtabDialogue, handleHtabChat,
     htabExitPending, htabPendingResumeData, resumeWorldFromHtab,
     showHtabInfoModal, setShowHtabInfoModal,
     allowUnexpectedEvent, setAllowUnexpectedEvent
@@ -10013,8 +9719,7 @@ const GameplayScreen = ({
 
     const [showSettingsMenu, setShowSettingsMenu] = useState(false); 
     const [isTopBarCollapsed, setIsTopBarCollapsed] = useState(false);
-    const [isPvPReady, setIsPvPReady] = useState(false);
-    const [showVisualGallery, setShowVisualGallery] = useState(false); 
+    const [showVisualGallery, setShowVisualGallery] = useState(false);
     const playerCharacter = knowledge.characters.find(c => c.isPlayer) || {}; 
     const gameplayScreenRef = useRef(null);
     const storyContainerRef = useRef(null);
@@ -10441,12 +10146,7 @@ const renderDefaultActions = () => {
 
         if (gameMode === 'COMBAT' && activeCombatLoop) {
             const turnTaker = activeCombatLoop.currentTurnTaker;
-            if (activeCombatLoop.combatType === 'PvP') {
-                const myRole = pvpRoom?.role;
-                isAITurnInCombat = !(turnTaker && turnTaker.id.startsWith(myRole + '_'));
-            } else {
-                isAITurnInCombat = !(turnTaker && (turnTaker.isPlayer || (turnTaker.isCompanion && !activeCombatLoop.isPlayerPresent)));
-            }
+            isAITurnInCombat = !(turnTaker && (turnTaker.isPlayer || (turnTaker.isCompanion && !activeCombatLoop.isPlayerPresent)));
         }
 
         if (gameMode === 'EXPLORATION' || gameMode === 'TRADE') {
@@ -10518,13 +10218,6 @@ const renderDefaultActions = () => {
 
         return (
           <div className="flex flex-col h-full p-2 justify-end">
-          {pvpTurnTimeLeft !== null && (
-                   <div className="text-center w-full mb-3">
-                       <span className={`px-4 py-1.5 rounded-full text-xs font-bold font-mono tracking-widest border ${pvpTurnTimeLeft <= 10 ? 'bg-[#8b1515]/20 text-[#ff4d4d] border-[#ff4d4d] animate-pulse' : 'bg-[#cda45e]/10 text-[#cda45e] border-[#cda45e]'}`}>
-                           ⏳ Tự động qua lượt sau: {pvpTurnTimeLeft} giây
-                       </span>
-                   </div>
-               )}
 
                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-2 animate-fade-in-up">
                    {choices.map((choice, index) => (
@@ -10959,15 +10652,6 @@ const renderDefaultActions = () => {
                     onOpenHtabInfoModal={() => setShowHtabInfoModal(true)}
                 />
                 
-                <FirebaseConfigModal 
-                show={showFirebaseModal} 
-                onClose={() => setShowFirebaseModal(false)} 
-                onConnectSuccess={() => {
-                    setShowFirebaseModal(false);
-                    setIsPvPReady(true);
-                    onOpenPvP(); 
-                }}
-            />
                 <SettingsMenu
                     show={showSettingsMenu}
                     onClose={() => setShowSettingsMenu(false)}
@@ -17079,70 +16763,6 @@ const parseStoryWithDialogue = (text) => {
     return segments;
 };
 
-const FirebaseConfigModal = ({ show, onClose, onConnectSuccess }) => {
-    const [configText, setConfigText] = React.useState("");
-    const [error, setError] = React.useState("");
-
-    if (!show) return null;
-
-    const handleConnect = () => {
-        setError("");
-        if (!configText.trim()) {
-            setError("Vui lòng dán cấu hình Firebase vào ô trống.");
-            return;
-        }
-
-        const result = initializeDynamicFirebase(configText);
-        if (result.success) {
-            setConfigText(""); // Xóa rỗng sau khi kết nối
-            onConnectSuccess();
-        } else {
-            setError(result.error || "Cấu hình không hợp lệ. Vui lòng copy đúng đoạn firebaseConfig.");
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-[#0a0f0a]/90 backdrop-blur-sm z-[300] flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-[#162216] w-full max-w-lg border border-[#cda45e]/50 flex flex-col relative shadow-[0_0_30px_rgba(10,20,10,0.9)] p-6">
-                
-                {/* 4 Góc bo kim loại */}
-                <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#cda45e] pointer-events-none"></div>
-                <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#cda45e] pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#cda45e] pointer-events-none"></div>
-                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#cda45e] pointer-events-none"></div>
-
-                <div className="flex justify-between items-center mb-4 border-b border-[#cda45e]/30 pb-2">
-                    <h3 className="text-xl font-bold text-[#cda45e] tracking-widest" style={{ fontFamily: "'Noto Serif Vietnamese', serif" }}>
-                        KẾT NỐI MÁY CHỦ
-                    </h3>
-                    <button onClick={onClose} className="text-[#a3b8a3] hover:text-[#ff4d4d] text-2xl font-bold leading-none">&times;</button>
-                </div>
-
-                <p className="text-[#8ba888] text-sm mb-4 leading-relaxed">
-                    Vui lòng dán nguyên đoạn mã <span className="text-[#e8d3a1] font-mono bg-[#101a10] px-1 py-0.5 rounded">const firebaseConfig = {"{ ... }"}</span> của bạn vào bên dưới để kích hoạt Đấu Trường:
-                </p>
-
-                <textarea
-                    value={configText}
-                    onChange={(e) => setConfigText(e.target.value)}
-                    placeholder='const firebaseConfig = {&#10;  apiKey: "...",&#10;  authDomain: "...",&#10;  ...&#10;};'
-                    className="w-full h-48 bg-[#0a0f0a] border border-[#cda45e]/30 text-[#e8d3a1] p-3 text-sm font-mono focus:outline-none focus:border-[#cda45e] mb-4 scrollbar-thin scrollbar-thumb-[#cda45e]"
-                />
-
-                {error && <p className="text-[#ff4d4d] text-sm mb-4 animate-pulse font-bold">{error}</p>}
-
-                <div className="flex justify-end gap-3 mt-2">
-                    <button onClick={onClose} className="px-6 py-2 border border-[#8ba888] text-[#8ba888] hover:bg-[#8ba888]/10 transition-colors font-bold text-sm tracking-wider">
-                        HỦY BỎ
-                    </button>
-                    <button onClick={handleConnect} className="px-6 py-2 bg-[#1b2a1b] border border-[#cda45e] text-[#e8d3a1] hover:bg-[#cda45e] hover:text-[#0a0f0a] transition-all font-bold text-sm tracking-wider shadow-[0_0_15px_rgba(205,164,94,0.2)] hover:shadow-[0_0_20px_rgba(205,164,94,0.6)]">
-                        KẾT NỐI
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
 // --- CẤU HÌNH KẾT NỐI HỆ THỐNG LƯU TRỮ ĐÁM MÂY (0Đ) ---
 const SUPABASE_URL = "https://kndbyujqhltmfkryydwh.supabase.co"; 
 const SUPABASE_ANON_KEY = "sb_publishable_GjYTTTowUg-P9paHkTvaOg_nW4C3Fye"; 
@@ -17889,48 +17509,6 @@ const loadGameAndResetHistory = async (gameData) => {
 
         const gameIdToSet = finalGameData.id;
         let activeGameData = null;
-
-        if (gameIdToSet && userId && !finalGameData.isAutosave && !finalGameData.isSupabaseCloud) {
-            const chunksColRef = collection(db, `artifacts/${appId}/users/${userId}/games/${gameIdToSet}/history_chunks`);
-            const assetsColRef = collection(db, `artifacts/${appId}/users/${userId}/games/${gameIdToSet}/character_assets`);
-            
-            const [chunksSnap, assetsSnap] = await Promise.all([
-                getDocs(chunksColRef),
-                getDocs(assetsColRef)
-            ]);
-
-            const loadedChunks = [];
-            chunksSnap.forEach(chunkDoc => {
-                const match = chunkDoc.id.match(/^chunk_(\d+)$/);
-                if (match) {
-                    const idx = parseInt(match[1], 10);
-                    const chunkData = chunkDoc.data();
-                    loadedChunks[idx] = chunkData.data;
-                }
-            });
-
-            const joinedCompressedStr = loadedChunks.filter(c => typeof c === 'string').join('');
-            if (joinedCompressedStr && window.LZString) {
-                const decompressedStr = window.LZString.decompressFromUTF16(joinedCompressedStr);
-                activeGameData = JSON.parse(decompressedStr);
-            }
-
-            if (activeGameData) {
-                const loadedAssets = {};
-                assetsSnap.forEach(assetDoc => {
-                    loadedAssets[assetDoc.id] = assetDoc.data();
-                });
-
-                if (activeGameData.knowledge?.characters) {
-                    activeGameData.knowledge.characters.forEach(char => {
-                        if (char && loadedAssets[char.id]) {
-                            char.avatarBase64 = loadedAssets[char.id].avatar;
-                            char.images = loadedAssets[char.id].images;
-                        }
-                    });
-                }
-            }
-        }
 
         if (!activeGameData) {
             if (finalGameData.isCompressed && window.LZString) {
@@ -18880,13 +18458,7 @@ const handleCombatStateChange = (updatedCombatants, logs, changeset) => {
 
 const handleActionRequest = async (turnTaker, isFirstTurn = false, options = {}, combatLoopInstance) => {
     // Xác định quyền sở hữu lượt đi
-    let isMyTurn = false;
-    if (combatLoopInstance.combatType === 'PvP') {
-        const myRole = pvpRoomRef.current?.role;
-        isMyTurn = turnTaker.id.startsWith(myRole + '_');
-    } else {
-        isMyTurn = turnTaker.isPlayer || (turnTaker.isCompanion && !combatLoopInstance.isPlayerPresent);
-    }
+    const isMyTurn = turnTaker.isPlayer || (turnTaker.isCompanion && !combatLoopInstance.isPlayerPresent);
 
     if (!isMyTurn || options.isControlled) {
         setIsProcessingAction(true);
@@ -18913,35 +18485,7 @@ const handleActionRequest = async (turnTaker, isFirstTurn = false, options = {},
         return;
     }
  
-    // 2. CHẾ ĐỘ PVP (ĐẤU TRƯỜNG MẠNG)
-    if (combatLoopInstance.combatType === 'PvP') {
-        if (isMyTurn) {
-            setPvpTurnTimeLeft(30); // Bật đếm ngược 30 giây
-            if (options.skillToUse) {
-                setPvpTurnTimeLeft(null); // Tắt khi đã có lệnh đánh
-                const { skillToUse, target } = options;
-
-                try {
-                    await combatLoopInstance.handleAction(skillToUse, target ? target.id : null);
-                } catch (error) {
-                    console.error("[Combat] Lỗi khi thực thi hành động PvP, mở khóa giao diện để tránh kẹt trận:", error);
-                    setModalMessage({ show: true, title: "Lỗi Hành Động", content: "Có lỗi xảy ra khi thực thi chiêu thức. Vui lòng thử lại.", type: "error" });
-                    setIsProcessingAction(false);
-                }
-                return;
-            }
-            // Mở bảng chọn chiêu
-            setCombatUIState({ view: 'main', items: [] });
-            setChoices(options.availableActions || combatLoopInstance.getAvailableActions(turnTaker));
-            return;
-        } else {
-            setPvpTurnTimeLeft(null); // Tắt khi đến lượt đối thủ
-            console.log("PvP: Lượt của đối thủ, khóa giao diện và chờ tín hiệu mạng...");
-            return;
-        }
-    }
-
-    // 3. CHẾ ĐỘ PVE (CHƠI ĐƠN VỚI AI)
+    // 2. CHẾ ĐỘ PVE (CHƠI ĐƠN VỚI AI)
     // Lượt người chơi hoặc đồng hành khi người chơi không tham gia từ đầu trận
     if (turnTaker.isPlayer || (turnTaker.isCompanion && !combatLoopInstance.isPlayerPresent)) {
         if (options.skillToUse) {
@@ -20371,8 +19915,7 @@ const handleGenerateImpromptu = async () => {
   const [currentStory, setCurrentStory] = useState('');
   const [choices, setChoices] = useState([]);
   const [isLoading, setIsLoading] = useState(false); 
-  const [userId, setUserId] = useState(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [userId] = useState(getOrCreateLocalUserId);
   const [showApiModal, setShowApiModal] = useState(false);
   const [showUpdateLogModal, setShowUpdateLogModal] = useState(false); // New state for update log
   const [inputApiKey, setInputApiKey] = useState(''); 
@@ -20380,336 +19923,6 @@ const handleGenerateImpromptu = async () => {
   const [savedGames, setSavedGames] = useState([]);
   const [showLoadGameModal, setShowLoadGameModal] = useState(false);
   const [showSaveSlotModal, setShowSaveSlotModal] = useState(false);
-  const [showPvPLobby, setShowPvPLobby] = useState(false);
-  const [pvpRoom, setPvpRoom] = useState(null); 
-  const [pvpRoomData, setPvpRoomData] = useState(null); 
-  const [pvpRoomInput, setPvpRoomInput] = useState(''); 
-  const [pvpTurnTimeLeft, setPvpTurnTimeLeft] = useState(null);
-
-  useEffect(() => {
-      let timer;
-      if (pvpTurnTimeLeft !== null && pvpTurnTimeLeft > 0) {
-          timer = setTimeout(() => setPvpTurnTimeLeft(prev => prev - 1), 1000);
-      } else if (pvpTurnTimeLeft === 0) {
-          setPvpTurnTimeLeft(null);
-          setCombatTargetingState({ isActive: false, skill: null, casterId: null });
-          setCombatUIState({ view: 'main', items: [] });
-          const loop = activeCombatLoopRef.current;
-          if (loop && loop.currentTurnTaker) {
-              const turnTaker = loop.currentTurnTaker;
-              const isCasterPlayerSide = turnTaker.isPlayer || turnTaker.isCompanion;
-              
-              // Tìm kẻ địch còn sống ngẫu nhiên
-              const enemies = loop.allCombatants.filter(c => c.hp > 0 && (c.isPlayer || c.isCompanion) !== isCasterPlayerSide);
-              const randomTarget = enemies.length > 0 ? enemies[Math.floor(Math.random() * enemies.length)] : null;
-              
-              const basicAttackSkill = findSkillFromActionText("đánh thường", turnTaker, loop.allCombatants);
-              
-              setModalMessage({ show: true, title: "Hết Giờ", content: "Đã quá thời gian suy nghĩ, hệ thống tự động tung đòn đánh thường ngẫu nhiên!", type: "info" });
-              
-              // Bắn thẳng đòn đánh vào target mà không qua bước UI
-              if (basicAttackSkill && randomTarget) {
-                  loop.handleAction(basicAttackSkill, randomTarget.id);
-              } else {
-                  // Fallback: Nếu không tìm thấy địch, cho qua lượt
-                  loop.nextTurn();
-              }
-          }
-      }
-      return () => clearTimeout(timer);
-  }, [pvpTurnTimeLeft]);
-
-
-// --- BẮT ĐẦU: HỆ THỐNG KHO ẢO ẢNH (WARDROBE) TỐI ƯU ---
-  // Hàm 1: Đồng bộ kho ảnh của bản thân (Chỉ chạy khi người chơi yêu cầu cập nhật)
-  const syncPvPWardrobe = async (party, currentUserId) => {
-      const wardrobeRef = collection(pvpDb, `pvp_wardrobes/${currentUserId}/party`);
-      
-      // Lấy danh sách ảnh đang có trên Cloud
-      const existingDocs = await getDocs(wardrobeRef);
-      const existingIds = existingDocs.docs.map(d => d.id);
-      const newIds = party.map(c => c.id);
-
-      // Xóa các Model thừa (Nhân vật đã bị loại khỏi đội)
-      for (const id of existingIds) {
-          if (!newIds.includes(id)) {
-              await deleteDoc(doc(pvpDb, `pvp_wardrobes/${currentUserId}/party/${id}`));
-          }
-      }
-
-      // Thêm/Cập nhật các Model mới
-      for (const char of party) {
-          let imagesToSave = null;
-          if (char.images) {
-              imagesToSave = { base: char.images.base || null, idle: char.images.idle || null, attack_normal: char.images.attack_normal || null };
-          }
-          await setDoc(doc(pvpDb, `pvp_wardrobes/${currentUserId}/party/${char.id}`), {
-              avatarBase64: char.images?.idle ? null : (char.avatarBase64 || null),
-              images: imagesToSave
-          }, { merge: true });
-      }
-      
-      // Trả về mảng sạch để vào trận
-      return party.map(c => { const clean = {...c}; delete clean.avatarBase64; delete clean.avatarUrl; delete clean.images; return clean; });
-  };
-
-  // Hàm 2: Tải ảnh từ kho của đối thủ
-  const fetchPvPWardrobe = async (cleanParty, targetUid) => {
-      const restoredParty = [];
-      for (const char of cleanParty) {
-          try {
-              // Vào thẳng kho ảo ảnh của đối thủ để lấy model
-              const imgRef = doc(pvpDb, `pvp_wardrobes/${targetUid}/party/${char.id}`);
-              const snap = await getDoc(imgRef);
-              if (snap.exists()) {
-                  const data = snap.data();
-                  restoredParty.push({ ...char, avatarBase64: data.avatarBase64, images: data.images });
-                  continue;
-              }
-          } catch(e) { console.warn(`Không thể lấy model của ${char.Name}`); }
-          restoredParty.push(char); // Fallback
-      }
-      return restoredParty;
-  };
-  // --- KẾT THÚC: HỆ THỐNG KHO ẢO ẢNH ---
-
-
-  // Hàm 0: Lấy đội hình ban đầu 
-  const getActivePartyForPvP = (prefix) => {
-      const party = knowledge.characters.filter(c => (c.isPlayer || c.isCompanion) && c.inParty !== false && c.hp > 0).slice(0, 4);
-      
-      const cleanParty = party.map(char => {
-          return {
-              id: `${prefix}_${char.id}`,
-              isPlayer: char.isPlayer,
-              isCompanion: char.isCompanion,
-              Name: char.Name || "Vô Danh",
-              hp: char.hp || 1, maxhp: char.maxhp || 1,
-              atk: char.atk || 0, def: char.def || 0, spd: char.spd || 0,
-              cr: char.cr || 0, cdmg: char.cdmg || 150, evasion: char.evasion || 0,
-              dmgRes: char.dmgRes || 0, dmgAmp: char.dmgAmp || 0,
-              level: char.level || 1, realm: char.realm || "Phàm nhân",
-              skills: char.skills ? JSON.parse(JSON.stringify(char.skills)) : [],
-              equippedSkills: char.equippedSkills ? JSON.parse(JSON.stringify(char.equippedSkills)) : {},
-              combatStatuses: [],
-              
-              images: char.images, 
-              avatarBase64: char.avatarBase64,
-              avatarUrl: char.avatarUrl
-          };
-      });
-      return JSON.parse(JSON.stringify(cleanParty)); 
-  };
-
-  // Hàm Hỗ Trợ: Bọc các lệnh Firebase vào đồng hồ đếm ngược
-  const firestoreWithTimeout = (promise, ms, actionName) => {
-      let timeoutId;
-      const timeoutPromise = new Promise((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error(`Timeout tại bước: ${actionName}`)), ms);
-      });
-      return Promise.race([
-          promise,
-          timeoutPromise
-      ]).finally(() => clearTimeout(timeoutId)); 
-  };
-  // Hàm Lập Phòng
-  const handleCreatePvPRoom = async (shouldUpdateModel) => {
-      setIsProcessingAction(true);
-      try {
-          const roomId = Math.random().toString(36).substring(2, 8).toUpperCase(); 
-          let party = getActivePartyForPvP('host');
-          
-          if (shouldUpdateModel) {
-              party = await syncPvPWardrobe(party, userId); 
-          } else {
-              party = party.map(c => { const clean = {...c}; delete clean.avatarBase64; delete clean.avatarUrl; delete clean.images; return clean; });
-          }
-          
-          const roomRef = doc(pvpDb, `pvp_rooms/${roomId}`);
-          const payload = {
-              status: 'waiting', hostReady: false, guestReady: false,
-              host: { uid: userId, name: gameSettings.characterName || 'Vô Danh', party: party },
-              guest: null, turn_state: { action_id: null, sender: null, payload: null },
-              createdAt: new Date().toISOString() 
-          };
-          await firestoreWithTimeout(setDoc(roomRef, sanitizeDataForFirestore(payload)), 15000, "Đẩy dữ liệu Host");
-          
-          const newRoomState = { id: roomId, role: 'host' };
-          setPvpRoom(newRoomState); pvpRoomRef.current = newRoomState; 
-          listenToPvPRoom(roomId, 'host'); 
-      } catch (error) {
-          setModalMessage({ show: true, title: 'Lỗi', content: error.message, type: 'error' });
-      } finally { setIsProcessingAction(false); }
-  };
-
-  // Hàm Vào Phòng
-  const handleJoinPvPRoom = async (roomId, shouldUpdateModel) => {
-      if (!roomId) return;
-      setIsProcessingAction(true);
-      try {
-          const roomRef = doc(pvpDb, `pvp_rooms/${roomId.toUpperCase()}`);
-          const roomSnap = await firestoreWithTimeout(getDoc(roomRef), 15000, "Lấy thông tin");
-
-          if (!roomSnap.exists() || roomSnap.data().status !== 'waiting') throw new Error('Mã Vấn Danh không tồn tại hoặc phòng đã đóng.');
-
-          let party = getActivePartyForPvP('guest');
-          
-          if (shouldUpdateModel) {
-              party = await syncPvPWardrobe(party, userId);
-          } else {
-              party = party.map(c => { const clean = {...c}; delete clean.avatarBase64; delete clean.avatarUrl; delete clean.images; return clean; });
-          }
-
-          
-          const guestPayload = { status: 'joined', guest: { uid: userId, name: gameSettings.characterName || 'Vô Danh', party: party } };
-          await firestoreWithTimeout(updateDoc(roomRef, sanitizeDataForFirestore(guestPayload)), 15000, "Đẩy dữ liệu Guest");
-
-          const newRoomState = { id: roomId.toUpperCase(), role: 'guest' };
-          setPvpRoom(newRoomState); pvpRoomRef.current = newRoomState;
-          listenToPvPRoom(roomId.toUpperCase(), 'guest');
-      } catch (error) {
-          setModalMessage({ show: true, title: 'Lỗi', content: error.message, type: 'error' });
-      } finally { setIsProcessingAction(false); }
-  };
-
-// Hàm 3: Lắng nghe đường truyền
-  const listenToPvPRoom = (roomId, role) => {
-      const roomRef = doc(pvpDb, `pvp_rooms/${roomId}`);
-      
-      const unsubscribe = onSnapshot(roomRef, async (docSnap) => {
-          const currentRoomState = pvpRoomRef.current; 
-          
-          if (!docSnap.exists()) {
-              const activeLoop = activeCombatLoopRef.current;
-              // Nếu đang đánh mà phòng mất -> Coi như đứt kết nối đột ngột
-              if (currentRoomState?.isCombatStarted && activeLoop && !activeLoop.combatEnded) {
-                  setModalMessage({ show: true, title: 'Phòng Bị Xóa', content: 'Phòng đã bị đóng đột ngột. Trận chiến kết thúc.', type: 'info' });
-                  activeLoop.combatEnded = true; 
-                  setGameMode('EXPLORATION');
-                  setActiveCombatLoop(null);
-              } 
-              else if (currentRoomState && role === 'guest' && !currentRoomState?.isCombatStarted) {
-                  setModalMessage({ show: true, title: 'Phòng Bị Hủy', content: 'Chủ phòng đã thu dọn lôi đài.', type: 'info' });
-              }
-              
-              if (currentRoomState?.unsubscribe) currentRoomState.unsubscribe();
-              setPvpRoom(null);
-              setPvpRoomData(null);
-              pvpRoomRef.current = null;
-              setPvpTurnTimeLeft(null);
-              setShowPvPLobby(false);
-              return; 
-          }
-
-          const data = docSnap.data();
-          setPvpRoomData(data);
-
-          // BẮT SỰ KIỆN ĐỐI THỦ AFK/THOÁT (ABANDONED) ===
-          if (data.status === 'abandoned') {
-              const activeLoop = activeCombatLoopRef.current;
-              if (data.abandonedBy !== role && activeLoop && !activeLoop.combatEnded) {
-                  setModalMessage({ show: true, title: 'Kẻ Địch Tháo Chạy', content: 'Đối thủ đã ngắt kết nối hoặc bỏ chạy. Ngươi giành chiến thắng vinh quang!', type: 'success' });
-                  
-                  // Ép kết thúc trận đấu, phe ta auto WIN
-                  activeLoop.combatEnded = true; 
-                  const myParty = activeLoop.allCombatants.filter(c => (c.isPlayer || c.isCompanion) === (role === 'host'));
-                  const enemyParty = activeLoop.allCombatants.filter(c => (c.isPlayer || c.isCompanion) !== (role === 'host'));
-                  
-                  handleCombatEnd('VICTORY', { winningSideInfo: myParty, losingSideInfo: enemyParty });
-                  
-                  // Host có nhiệm vụ xóa rác
-                  if (role === 'host') deleteDoc(roomRef).catch(()=>{});
-              }
-              return;
-          }
-
-          if (data.status === 'joined' && !currentRoomState.isDownloading) {
-              pvpRoomRef.current.isDownloading = true; 
-              let myRawParty = role === 'host' ? data.host.party : data.guest.party;
-              let enemyRawParty = role === 'host' ? data.guest.party : data.host.party;
-              let myUid = role === 'host' ? data.host.uid : data.guest.uid;
-              let enemyUid = role === 'host' ? data.guest.uid : data.host.uid;
-
-              let myParty = await fetchPvPWardrobe(myRawParty, myUid);
-              let enemyParty = await fetchPvPWardrobe(enemyRawParty, enemyUid);
-
-              myParty = myParty.map(c => ({...c, isPlayer: c.id.includes('_player'), isCompanion: !c.id.includes('_player')}));
-              enemyParty = enemyParty.map(c => ({...c, isPlayer: false, isCompanion: false}));
-
-              pvpRoomRef.current.readyMyParty = myParty;
-              pvpRoomRef.current.readyEnemyParty = enemyParty;
-
-              await updateDoc(roomRef, { [`${role}Ready`]: true });
-          }
-          
-          if (data.status === 'playing' && !currentRoomState.isCombatStarted) {
-              const updatedState = { ...currentRoomState, isCombatStarted: true, unsubscribe };
-              setPvpRoom(updatedState);
-              pvpRoomRef.current = updatedState;
-
-              setShowPvPLobby(false); 
-              setCombatEnvironmentImage('https://res.cloudinary.com/dptdcwltd/image/upload/v1778224741/download_2_jfefpx.png'); 
-              setCombatInitializationData({ 
-                  playerParty: pvpRoomRef.current.readyMyParty, 
-                  enemies: pvpRoomRef.current.readyEnemyParty, 
-                  combatType: 'PvP' 
-              });
-              setGameMode('COMBAT');
-          }
-          
-          if (data.status === 'playing' && data.turn_state?.action_id && data.turn_state.action_id !== currentRoomState?.lastActionIdProcessed) {
-              pvpRoomRef.current.lastActionIdProcessed = data.turn_state.action_id;
-              const activeLoop = activeCombatLoopRef.current; 
-              if (data.turn_state.sender !== role && activeLoop && data.turn_state.payload) {
-                  const { skillData, designatedTargetId, changeset } = data.turn_state.payload;
-                  activeLoop.handleAction(skillData, designatedTargetId, changeset);
-              }
-          }
-      });
-  };
-  // Hàm 4: Cập nhật hàm xử lý nút Khai Chiến của Chủ Phòng
-  const handleStartPvPCombat = async () => {
-      if (pvpRoomRef.current?.id && pvpRoomRef.current?.role === 'host') {
-          try {
-              const roomRef = doc(pvpDb, `pvp_rooms/${pvpRoomRef.current.id}`);
-              await updateDoc(roomRef, { status: 'playing' });
-          } catch (e) {
-              console.error("Lỗi khi bắt đầu trận PvP:", e);
-          }
-      }
-  };
-
-  // Hàm 5: Cập nhật hàm Rời/Hủy phòng, bắt thêm sự kiện Abandon
-  const handleCancelPvP = async () => {
-      const room = pvpRoomRef.current;
-      if (room?.id) {
-          try {
-              const roomRef = doc(pvpDb, `pvp_rooms/${room.id}`);
-              // Nếu đang đánh nhau mà bấm thoát, lưu vết lại để đối thủ biết
-              if (room.isCombatStarted) {
-                  await updateDoc(roomRef, { status: 'abandoned', abandonedBy: room.role });
-              } else if (room.role === 'host') {
-                  // Nếu là chủ mà chưa đánh đã thoát -> Xóa mẹ phòng
-                  await deleteDoc(roomRef);
-              } else {
-                  // Nếu là khách mà chưa đánh đã thoát -> Reset phòng về waiting để người khác vào
-                  await updateDoc(roomRef, { status: 'waiting', guest: null, guestReady: false });
-              }
-          } catch(e) {}
-      }
-      
-      if (room?.unsubscribe) room.unsubscribe(); 
-      setPvpRoom(null);
-      setPvpRoomData(null); // Xóa state
-      pvpRoomRef.current = null;
-      setShowPvPLobby(false);
-      
-      if (gameMode === 'COMBAT' && activeCombatLoopRef.current?.combatType === 'PvP') {
-          activeCombatLoopRef.current.combatEnded = true;
-          setGameMode('EXPLORATION');
-          setActiveCombatLoop(null);
-      }
-  };
 
   const [modalMessage, setModalMessage] = useState({ show: false, title: '', content: '', type: 'info' });
   const [confirmationModal, setConfirmationModal] = useState({ show: false, title: '', content: '', onConfirm: null, onCancel: null, confirmText: 'Xác nhận', cancelText: 'Hủy'});
@@ -20730,23 +19943,9 @@ const [showIntroModal, setShowIntroModal] = useState(false);
 const [showFunctionsModal, setShowFunctionsModal] = useState(false);
 const [showInfoModal, setShowInfoModal] = useState(false);
 const [showInteractionPanel, setShowInteractionPanel] = useState(false);
-const [showFirebaseModal, setShowFirebaseModal] = useState(false);
-const [isPvPReady, setIsPvPReady] = useState(false); 
 const justLoadedRef = useRef(false);
-const pvpRoomRef = useRef(null);
 useEffect(() => {
       const handleEmergencyExit = (e) => {
-          const room = pvpRoomRef.current;
-          if (room?.id) {
-              const roomRef = doc(pvpDb, `pvp_rooms/${room.id}`);
-              if (room.isCombatStarted) {
-                  updateDoc(roomRef, { status: 'abandoned', abandonedBy: room.role }).catch(()=>{});
-              } else if (room.role === 'host') {
-                  deleteDoc(roomRef).catch(()=>{});
-              } else {
-                  updateDoc(roomRef, { status: 'waiting', guest: null, guestReady: false }).catch(()=>{});
-              }
-          }
           clearAllIndexedDB();
       };
 
@@ -20766,7 +19965,6 @@ const [generatingAvatars, setGeneratingAvatars] = useState({});
 const [generatingSprites, setGeneratingSprites] = useState({});     
 const handleTargetSelection = (targetId) => {
     setIsProcessingAction(true);
-    setPvpTurnTimeLeft(null);
     const { skill, casterId, flavorText, companionCommand } = combatTargetingState;
     
     setCombatTargetingState({ isActive: false, skill: null, casterId: null });
@@ -21118,19 +20316,11 @@ useEffect(() => {
     if (combatInitializationData && !activeCombatLoop) {
         const { playerParty, enemies, combatType } = combatInitializationData;
 
-        let finalStatCombatants = [];
-        if (combatType === 'PvP') {
-            finalStatCombatants = [...playerParty, ...enemies].map(c => ({
-                ...c,
-                skills: c.skills || [],
-            }));
-        } else {
-            const allCombatantsInvolved = [...playerParty, ...enemies].map(c => ({
-                ...c,
-                skills: c.skills || [],
-            }));
-            finalStatCombatants = allCombatantsInvolved.map(c => calculateFinalStats(c));
-        }
+        const allCombatantsInvolved = [...playerParty, ...enemies].map(c => ({
+            ...c,
+            skills: c.skills || [],
+        }));
+        const finalStatCombatants = allCombatantsInvolved.map(c => calculateFinalStats(c));
 
         // KHỞI TẠO ĐÚNG THỨ TỰ THAM SỐ
         const loop = new CombatLoop(
@@ -21154,23 +20344,12 @@ useEffect(() => {
                 if (vfx.customImageUrl) totalAnimationTime += 1500; // Tăng thêm thời gian dừng trận để người chơi kịp xem ảnh tùy chỉnh/GIF
 
                 await sleep(totalAnimationTime);
-                setActiveAnimation(null); 
+                setActiveAnimation(null);
             },
-
-            // 8. onPvPActionGenerated
-            async (pvpPayload) => {
-                if (pvpRoomRef.current) {
-                    const roomRef = doc(pvpDb, `pvp_rooms/${pvpRoomRef.current.id}`);
-                    await updateDoc(roomRef, {
-                        'turn_state.action_id': crypto.randomUUID(),
-                        'turn_state.sender': pvpRoomRef.current.role,
-                        'turn_state.payload': pvpPayload
-                    });
-                }
-            },
-            callCombatAI 
+            callCombatAI
         );
 
+        setCombatEndSummary(null);
         setActiveCombatLoop(loop);
         setTimeout(() => {
             loop.start();
@@ -21858,55 +21037,27 @@ useEffect(() => {
 }, [knowledge.pendingModeChange]); // Dependency: Chỉ chạy khi thuộc tính này thay đổi
 
 useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUserId(user.uid);
-        
-        // Logic đã được đơn giản hóa, chỉ tải key của Gemini
-        const userGeminiKey = await loadApiKey(user.uid);
+    // Logic đã được đơn giản hóa, chỉ tải key của Gemini từ localStorage
+    const userGeminiKey = loadApiKey();
 
-        if (userGeminiKey) {
-          setApiKey(userGeminiKey);
-          setInputApiKey(userGeminiKey);
-          setApiMode('userKey');
-          setApiKeyStatus({ status: 'Đã kết nối', message: 'API Key của Gemini đã được tải.', color: 'text-green-500' });
-        } else if (import.meta.env.VITE_GEMINI_API_KEY) {
-          // Chạy standalone (ngoài AI Studio): dùng key free-tier từ .env.local làm mặc định
-          setApiKey(import.meta.env.VITE_GEMINI_API_KEY);
-          setInputApiKey(import.meta.env.VITE_GEMINI_API_KEY);
-          setApiMode('userKey');
-          setApiKeyStatus({ status: 'Đã kết nối (.env)', message: 'Đang dùng Gemini API Key từ file .env.local (free tier).', color: 'text-green-500' });
-        } else {
-          setApiMode('defaultGemini');
-          setApiKeyStatus({
-            status: 'Đang dùng Gemini AI Mặc Định',
-            color: 'text-sky-400'
-          });
-        }
-        
-      } else {
-        try {
-          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            await signInWithCustomToken(auth, __initial_auth_token);
-          } else {
-            await signInAnonymously(auth);
-          }
-        } catch (error) {
-            if (error.code === 'auth/invalid-claims') {
-                try {
-                    await signInAnonymously(auth);
-                } catch (anonError) {
-                    setApiKeyStatus({ status: 'Lỗi Xác Thực Nghiêm Trọng', message: `Không thể đăng nhập ẩn danh: ${anonError.message}`, color: 'text-red-500' });
-                }
-            } else {
-                setApiKeyStatus({ status: 'Lỗi xác thực', message: `Không thể xác thực: ${error.message}`, color: 'text-red-500' });
-            }
-        }
-      }
-      setIsAuthReady(true);
-    });
-
-    return () => unsubscribe();
+    if (userGeminiKey) {
+      setApiKey(userGeminiKey);
+      setInputApiKey(userGeminiKey);
+      setApiMode('userKey');
+      setApiKeyStatus({ status: 'Đã kết nối', message: 'API Key của Gemini đã được tải.', color: 'text-green-500' });
+    } else if (import.meta.env.VITE_GEMINI_API_KEY) {
+      // Chạy standalone (ngoài AI Studio): dùng key free-tier từ .env.local làm mặc định
+      setApiKey(import.meta.env.VITE_GEMINI_API_KEY);
+      setInputApiKey(import.meta.env.VITE_GEMINI_API_KEY);
+      setApiMode('userKey');
+      setApiKeyStatus({ status: 'Đã kết nối (.env)', message: 'Đang dùng Gemini API Key từ file .env.local (free tier).', color: 'text-green-500' });
+    } else {
+      setApiMode('defaultGemini');
+      setApiKeyStatus({
+        status: 'Đang dùng Gemini AI Mặc Định',
+        color: 'text-sky-400'
+      });
+    }
   }, []);
 
 // --- useEffect Dây chuyền sản xuất hợp nhất ---
@@ -22098,60 +21249,45 @@ useEffect(() => {
 
 
 useEffect(() => {
-    if (gameMode !== 'EXPLORATION' || activeCombatLoop?.combatType !== 'PvP') {
-        setIsProcessingAction(isLoading || isCheckingMemory); 
-    }
+    setIsProcessingAction(isLoading || isCheckingMemory);
 }, [isLoading, isCheckingMemory, gameMode, activeCombatLoop]);
 
 
   useEffect(() => {
-    if (isAuthReady && userId) {
-      const gamesCollectionPath = `artifacts/${appId}/users/${userId}/games`;
-      const q = query(collection(db, gamesCollectionPath));
-      
-      const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-          const cloudGames = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          let localAutosaves = [];
-          try {
-              const keys = await getAllIndexedDBKeys();
-              for (const key of keys) {
-                  if (key.startsWith('autosave_') || key.startsWith('manual_local_')) {
-                      const localData = await getAvatarFromIndexedDB(key);
-                      if (localData) {
-                          localAutosaves.push({
-                              id: key,
-                              isAutosave: key.startsWith('autosave_'),
-                              isLocalManual: key.startsWith('manual_local_'),
-                              updatedAt: { toDate: () => new Date(localData.timestamp) },
-                              currentTurn: localData.currentTurn,
-                              gameSettings: localData.gameSettings,
-                              ...localData
-                          });
-                      }
-                  }
-              }
-          } catch (e) {
-              console.error("Lỗi quét lưu trữ cục bộ từ IndexedDB:", e);
-          }
+    const scanLocalSaves = async () => {
+        let localAutosaves = [];
+        try {
+            const keys = await getAllIndexedDBKeys();
+            for (const key of keys) {
+                if (key.startsWith('autosave_') || key.startsWith('manual_local_')) {
+                    const localData = await getAvatarFromIndexedDB(key);
+                    if (localData) {
+                        localAutosaves.push({
+                            id: key,
+                            isAutosave: key.startsWith('autosave_'),
+                            isLocalManual: key.startsWith('manual_local_'),
+                            updatedAt: { toDate: () => new Date(localData.timestamp) },
+                            currentTurn: localData.currentTurn,
+                            gameSettings: localData.gameSettings,
+                            ...localData
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Lỗi quét lưu trữ cục bộ từ IndexedDB:", e);
+        }
 
-          const combinedGames = [...localAutosaves, ...cloudGames];
+        localAutosaves.sort((a, b) => {
+            const timeA = a.updatedAt?.toDate ? a.updatedAt.toDate().getTime() : 0;
+            const timeB = b.updatedAt?.toDate ? b.updatedAt.toDate().getTime() : 0;
+            return timeB - timeA;
+        });
 
-          combinedGames.sort((a, b) => {
-              const timeA = a.updatedAt?.toDate ? a.updatedAt.toDate().getTime() : 0;
-              const timeB = b.updatedAt?.toDate ? b.updatedAt.toDate().getTime() : 0;
-              return timeB - timeA;
-          });
-
-          setSavedGames(combinedGames);
-      }, (error) => {
-          console.error("Error fetching saved games:", error);
-      });
-      return () => unsubscribe();
-    }
-  }, [isAuthReady, userId]);
+        setSavedGames(localAutosaves);
+    };
+    scanLocalSaves();
+  }, []);
 
 const loadGame = async (gameData) => {
     // GỌI HÀM TRUNG TÂM ĐỂ XỬ LÝ
@@ -22437,21 +21573,16 @@ const addInitialTrait = () => {
   };
 
 
-  const saveApiKey = async () => { 
-    if (!userId) {
-      setModalMessage({ show: true, title: 'Lỗi', content: 'Người dùng chưa được xác thực để lưu API Key.', type: 'error' });
-      return;
-    }
+  const saveApiKey = async () => {
     if (!inputApiKey.trim()) {
         setModalMessage({ show: true, title: 'Thiếu Thông Tin', content: 'API Key không được để trống.', type: 'error' });
         return;
     }
-    setIsLoading(true); 
+    setIsLoading(true);
     try {
-      const apiKeyRef = doc(db, `artifacts/${appId}/users/${userId}/apiCredentials/gemini`);
-      await setDoc(apiKeyRef, { key: inputApiKey, lastUpdated: serverTimestamp() });
-      setApiKey(inputApiKey); 
-      setApiMode('userKey'); 
+      localStorage.setItem('gemini_api_key', inputApiKey);
+      setApiKey(inputApiKey);
+      setApiMode('userKey');
       setApiKeyStatus({ status: 'Đã lưu', message: 'API Key của bạn đã được lưu thành công!', color: 'text-green-500' });
       setShowApiModal(false);
       setModalMessage({ show: true, title: 'Thành Công', content: 'API Key của bạn đã được lưu!', type: 'success' });
@@ -22463,20 +21594,8 @@ const addInitialTrait = () => {
     setIsLoading(false);
   };
 
-  const loadApiKey = async (currentUserId) => {
-    if (!currentUserId) return null;
-    try {
-      const apiKeyRef = doc(db, `artifacts/${appId}/users/${currentUserId}/apiCredentials/gemini`);
-      const docSnap = await getDoc(apiKeyRef);
-      if (docSnap.exists()) {
-        return docSnap.data().key;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error loading API key:", error);
-      setModalMessage({ show: true, title: 'Lỗi Tải API Key', content: `Không thể tải API Key đã lưu: ${error.message}`, type: 'error' });
-      return null;
-    }
+  const loadApiKey = () => {
+    return localStorage.getItem('gemini_api_key');
   };
 
   const testApiKey = async () => { 
@@ -27554,11 +26673,8 @@ const finalizeCombatEnd = async (outcome, data, finalSharedCooldowns) => {
     
     const currentLoop = activeCombatLoopRef.current;
     const combatType = currentLoop?.combatType || 'Lethal';
-    
-    const currentPvpRoomId = pvpRoomRef.current?.id;
-    const currentPvpRoomRole = pvpRoomRef.current?.role;
 
-    if (outcome === 'DEFEAT' && !knowledge.htab?.isAwakened && combatType !== 'PvP') {
+    if (outcome === 'DEFEAT' && !knowledge.htab?.isAwakened) {
         const knowledgeAfterCombat = JSON.parse(JSON.stringify(knowledge));
         const playerIndex = knowledgeAfterCombat.characters.findIndex(c => c.isPlayer);
         if (playerIndex > -1) {
@@ -27587,18 +26703,7 @@ const finalizeCombatEnd = async (outcome, data, finalSharedCooldowns) => {
     }
 
 
-    if (combatType === 'PvP') {
-        setPvpTurnTimeLeft(null); 
-        await sleep(3000); 
-        
-        if (pvpRoomRef.current?.unsubscribe) pvpRoomRef.current.unsubscribe();
-        
-        setPvpRoom(null);
-        setPvpRoomData(null);
-        pvpRoomRef.current = null;
-    } else {
-        await sleep(1500); 
-    }
+    await sleep(1500);
 
     setGameMode('EXPLORATION');
     setActiveCombatLoop(null);
@@ -27610,23 +26715,6 @@ const finalizeCombatEnd = async (outcome, data, finalSharedCooldowns) => {
             ...prev,
             sharedCooldowns: finalSharedCooldowns
         }));
-    }
-
-    if (combatType === 'PvP' && currentPvpRoomId) {
-        console.log("Trận PvP kết thúc. Bắt đầu dọn dẹp state phòng trên Firebase.");
-        const roomRef = doc(pvpDb, `pvp_rooms/${currentPvpRoomId}`);
-
-        if (currentPvpRoomRole === 'host') {
-            deleteDoc(roomRef)
-                .then(() => console.log(`[Host] Đã dọn dẹp sạch sẽ phòng ${currentPvpRoomId}.`))
-                .catch(() => {});
-        } else if (currentPvpRoomRole === 'guest') {
-            setTimeout(() => {
-                deleteDoc(roomRef)
-                    .then(() => console.log(`[Guest] Đã kiểm tra và dọn dẹp phòng dự phòng ${currentPvpRoomId}.`))
-                    .catch(() => {});
-            }, 5000);
-        }
     }
 
     const finalCombatants = [...data.winningSideInfo, ...data.losingSideInfo];
@@ -27904,7 +26992,6 @@ ${postCombatRules}
 const processPlayerAction = async (actionText, actionType, flavorText = '') => {
     const trimmedAction = (actionText || '').trim();
     if (!trimmedAction || isProcessingAction) return;
-    setPvpTurnTimeLeft(null);
 
     if (activeCriticalPromisesRef.current.length > 0) {
         setIsGateWaiting(true);
@@ -27989,13 +27076,7 @@ const processPlayerAction = async (actionText, actionType, flavorText = '') => {
                 }
 
                 const turnTaker = activeCombatLoop.currentTurnTaker;
-                let isMyTurn = false;
-                if (activeCombatLoop.combatType === 'PvP') {
-                    const myRole = pvpRoomRef.current?.role;
-                    isMyTurn = turnTaker && turnTaker.id.startsWith(myRole + '_');
-                } else {
-                    isMyTurn = turnTaker && (turnTaker.isPlayer || (turnTaker.isCompanion && !activeCombatLoop.isPlayerPresent));
-                }
+                const isMyTurn = turnTaker && (turnTaker.isPlayer || (turnTaker.isCompanion && !activeCombatLoop.isPlayerPresent));
 
                 if (!isMyTurn) {
                     setModalMessage({ show: true, title: "Chưa Đến Lượt", content: "Hãy kiên nhẫn chờ đến lượt của phe mình.", type: "info" });
@@ -30023,15 +29104,6 @@ const handleHtabChat = async (userText) => {
 
 const handleCustomAction = (actionText) => {
     const trimmedAction = actionText.trim();
-    if (trimmedAction.toLowerCase() === '/online') {
-        if (isPvPReady) {
-            onOpenPvP(); 
-        } else {
-            setShowFirebaseModal(true); 
-        }
-        setCustomActionInput(""); 
-        return; 
-    }
 
     if (knowledge.systemAssistant?.isActive) {
         handleHtabChat(trimmedAction);
@@ -32301,7 +31373,6 @@ const handleSlotSelection = async (slotNumber) => {
         return;
     }
 
-    // Luồng lưu Firebase mặc định cho người chơi không có khóa VIP
     const slotId = `manual_${slotNumber}_${currentGameId}`;
     await saveGameProgress(
         null, 
@@ -32346,7 +31417,7 @@ const compressToThumbnail = (base64Str) => {
 };
 
 const saveGameProgress = async (gameIdToSave, story, currentChoices, fullStoryHistory, currentKnowledge, options = {}) => {
-    if (!userId || !isAuthReady) {
+    if (!userId) {
         setModalMessage({ show: true, title: 'Lỗi Lưu Game', content: 'Hệ thống chưa sẵn sàng. Vui lòng thử lại sau.', type: 'error' });
         return null;
     }
@@ -32377,41 +31448,20 @@ const saveGameProgress = async (gameIdToSave, story, currentChoices, fullStoryHi
         console.log("=== BẮT ĐẦU ĐO HIỆU NĂNG TIẾN TRÌNH LƯU GAME ===");
         console.time("⏱️ Tổng thời gian lưu game");
 
-        let gameDocRef;
         let finalGameId = gameIdToSave;
         if (options.forcedId) {
-            gameDocRef = doc(db, `artifacts/${appId}/users/${userId}/games/${options.forcedId}`);
             finalGameId = options.forcedId;
-        } else if (gameIdToSave) {
-            gameDocRef = doc(db, `artifacts/${appId}/users/${userId}/games/${gameIdToSave}`);
-        } else {
-            gameDocRef = doc(collection(db, `artifacts/${appId}/users/${userId}/games`));
-            finalGameId = gameDocRef.id;
+        } else if (!gameIdToSave) {
+            finalGameId = crypto.randomUUID();
         }
 
         const cleanId = finalGameId ? finalGameId.replace(/^(autosave_|manual_\d+_|manual_local_)/, '') : '';
-        
+
         if (!options.isAutosave && !options.isLocal) {
             setCurrentGameId(cleanId);
         }
 
-        const chunksColRef = collection(db, `artifacts/${appId}/users/${userId}/games/${finalGameId}/history_chunks`);
-
-        const [activePlayerAvatar, ...characterAssets] = (options.isAutosave)
-            ? [null]
-            : await Promise.all([
-                getAvatarFromIndexedDB('player'),
-                ...currentKnowledge.characters.map(async (char) => {
-                    if (!char || char.isPermanentlyDead) return null;
-                    const isPl = char.isPlayer || char.id === 'player' || char.id === 'player_fallback';
-                    const charId = isPl ? 'player' : char.id;
-                    const [avatar, images] = await Promise.all([
-                        getAvatarFromIndexedDB(charId),
-                        getAvatarFromIndexedDB(`${cleanId}_${charId}_images`)
-                    ]);
-                    return { id: char.id, avatar, images: images || char.images };
-                })
-            ]);
+        const activePlayerAvatar = options.isAutosave ? null : await getAvatarFromIndexedDB('player');
 
         let avatarThumbnail = null;
         if (activePlayerAvatar) {
@@ -32480,77 +31530,8 @@ const saveGameProgress = async (gameIdToSave, story, currentChoices, fullStoryHi
             return localSaveId;
         }
 
-        const sanitizedRawData = sanitizeDataForFirestore(rawDataToSave);
-        const jsonString = JSON.stringify(sanitizedRawData);
-
-        let compressedStr = "";
-        if (window.LZString) {
-            compressedStr = window.LZString.compressToUTF16(jsonString);
-        } else {
-            compressedStr = btoa(unescape(encodeURIComponent(jsonString)));
-        }
-
-        const CHUNK_SIZE = 300000;
-        const chunks = [];
-        for (let i = 0; i < compressedStr.length; i += CHUNK_SIZE) {
-            chunks.push(compressedStr.substring(i, i + CHUNK_SIZE));
-        }
-
-        const batch = writeBatch(db);
-
-        const mainDocPayload = {
-            currentTurn: currentTurn,
-            gameSettings: {
-                characterName: gameSettings.characterName,
-                storyTitle: gameSettings.storyTitle,
-                difficulty: gameSettings.difficulty,
-                playerAvatarThumbnail: avatarThumbnail
-            },
-            updatedAt: serverTimestamp(),
-            totalChunks: chunks.length,
-            isMegaSave: true,
-            ...(options.isAutosave && { isAutosave: true })
-        };
-        batch.set(gameDocRef, mainDocPayload, { merge: true });
-
-        for (let index = 0; index < chunks.length; index++) {
-            const chunkId = `chunk_${index}`;
-            const chunkDocRef = doc(db, `artifacts/${appId}/users/${userId}/games/${finalGameId}/history_chunks`, chunkId);
-            batch.set(chunkDocRef, { partIndex: index, data: chunks[index] }, { merge: true });
-        }
-
-        if (!options.isAutosave && characterAssets) {
-            characterAssets.forEach(asset => {
-                if (asset) {
-                    const assetDocRef = doc(db, `artifacts/${appId}/users/${userId}/games/${finalGameId}/character_assets`, asset.id);
-                    batch.set(assetDocRef, {
-                        avatar: asset.avatar || null,
-                        images: asset.images || null,
-                        updatedAt: serverTimestamp()
-                    }, { merge: true });
-                }
-            });
-        }
-
-        const existingChunksSnap = await getDocs(chunksColRef);
-        existingChunksSnap.forEach(docDoc => {
-            const match = docDoc.id.match(/^chunk_(\d+)$/);
-            if (match) {
-                const idx = parseInt(match[1], 10);
-                if (idx >= chunks.length) {
-                    const orphanDocRef = doc(db, `artifacts/${appId}/users/${userId}/games/${finalGameId}/history_chunks`, docDoc.id);
-                    batch.delete(orphanDocRef);
-                }
-            }
-        });
-
-        await batch.commit();
         console.timeEnd("⏱️ Tổng thời gian lưu game");
-
-        if (!options.isAutosave) {
-            setModalMessage({ show: true, title: 'Thành Công', content: 'Đã hoàn tất lưu trữ phân mảnh nén dữ liệu tổng hợp lên đám mây.', type: 'success' });
-        }
-        return gameDocRef.id;
+        return null;
     } catch (error) {
         console.error("Lỗi khi lưu tiến trình game:", error);
         if (!options.isAutosave) {
@@ -32735,14 +31716,12 @@ const performStateCleanup = () => {
 };
 
 const performRestart = () => {
-    handleCancelPvP(); 
     performStateCleanup();
     setCurrentScreen('setup');
     setStartGameInitialization(false); 
 };
 
 const goHome = () => {
-    handleCancelPvP();
     if (currentScreen === 'gameplay' && storyHistory.length > 0) {
         setConfirmationModal({
             show: true,
@@ -33034,4 +32013,1271 @@ ${emotionDescriptions.join('\n')}
                     const rawEmo = emotionMatch[1].toLowerCase().trim();
                     if (['smile', 'happy', 'teasing'].includes(rawEmo)) detectedEmotion = 'smile';
                     else if (['sad', 'melancholy'].includes(rawEmo)) detectedEmotion = 'sad';
-                    else if (['angry'
+                    else if (['angry', 'furious'].includes(rawEmo)) detectedEmotion = 'angry';
+                    else if (['laugh', 'joy'].includes(rawEmo)) detectedEmotion = 'laugh';
+                    cleanResponse = cleanResponse.replace(/\[HTAB_EMOTION:[^\]]+\]/g, '');
+                }
+
+                if (response.includes('[SYSTEM_LEAVE]')) {
+                    shouldExit = true;
+                    cleanResponse = cleanResponse.replace(/\[SYSTEM_LEAVE\]/g, '');
+                }
+
+                const tagRegex = /\[([A-Z_]+):\s*([^\]]+)\]/g;
+                let match;
+                while ((match = tagRegex.exec(response)) !== null) {
+                    collectedCommands.push({ type: match[1], payload: match[2] });
+                    cleanResponse = cleanResponse.replace(match[0], '');
+                }
+
+                cleanResponse = cleanResponse.trim();
+                const updatedHistoryWithSystem = [{ role: 'system', content: cleanResponse }];
+
+                setknowledge(prev => {
+                    const newK = JSON.parse(JSON.stringify(prev));
+                    newK.htab = { 
+                        ...newK.htab, 
+                        chatHistory: updatedHistoryWithSystem,
+                        currentEmotion: detectedEmotion,
+                        recentDonations: [] 
+                    };
+                    newK.systemAssistant = {
+                        isActive: true,
+                        dialogue: cleanResponse,
+                        expression: detectedEmotion,
+                        images: prev.systemAssistant?.images || {},
+                        lastTriggerType: prev.systemAssistant?.lastTriggerType || "casual"
+                    };
+                    return newK;
+                });
+
+                setCurrentHtabDialogue(cleanResponse);
+
+                if (shouldExit) {
+                    const lastStoryItem = storyHistory.filter(item => item.type === 'story').pop()?.content || "Ngươi đang đứng im lìm.";
+                    const lastStoryText = typeof lastStoryItem === 'string' ? lastStoryItem : JSON.stringify(lastStoryItem);
+                    
+                    let commandSummaryText = [];
+                    collectedCommands.forEach(cmd => {
+                        if (cmd.type === 'ITEM_IDEA_GAINED' || cmd.type === 'WORLD_ITEM') {
+                            const parsed = parseKeyValueString(cmd.payload);
+                            commandSummaryText.push(`Nhận được vật phẩm mới: ${parsed.name || parsed.Name}`);
+                        } else if (cmd.type === 'APPLY_LONG_TERM_STATUS') {
+                            const parsed = parseKeyValueString(cmd.payload);
+                            commandSummaryText.push(`Dính trạng thái cơ thể: ${parsed.name || parsed.status_id}`);
+                        } else if (cmd.type === 'QUEST_ASSIGNED') {
+                            const parsed = parseKeyValueString(cmd.payload);
+                            commandSummaryText.push(`Nhận nhiệm vụ hệ thống: ${parsed.title}`);
+                        } else if (cmd.type === 'CHARACTER_UPDATE') {
+                            commandSummaryText.push(`Thay đổi chỉ số cơ thể: ${cmd.payload}`);
+                        }
+                    });
+                    const summarySummary = commandSummaryText.join(', ') || "Không có biến động thể chất đáng kể";
+
+                    const resumePrompt = getHtabResumePrompt(lastStoryText, summarySummary);
+
+                    const transitionResponse = await fetchWithRetries(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${effectiveApiKey}`,
+                        { contents: [{ role: "user", parts: [{ text: resumePrompt }] }] }
+                    );
+
+                    const parsedTransition = await parseGeminiResponseAndUpdateState(transitionResponse, knowledge, setActiveTrade);
+
+                    setHtabPendingResumeData({
+                        collectedCommands: collectedCommands,
+                        chatHistory: updatedHistoryWithSystem,
+                        transitionNarrative: parsedTransition.story,
+                        transitionChoices: parsedTransition.choices,
+                        updates: parsedTransition.updates,
+                        commandBlock: parsedTransition.commandBlock
+                    });
+                    setHtabExitPending(true);
+                } else {
+                    setPendingHtabCommands(collectedCommands);
+                }
+            }
+        } catch (e) {
+            console.error("Lỗi kích hoạt Hệ thống ăn bám chủ động:", e);
+        } finally {
+            setIsProcessingAction(false);
+        }
+    };
+
+
+const openQuickLoreModal = useCallback((category, nameOrTitleOrObject) => {
+    if (!nameOrTitleOrObject) {
+        console.warn("openQuickLoreModal được gọi với dữ liệu không hợp lệ.");
+        return;
+    }
+
+    if (typeof nameOrTitleOrObject === 'object') {
+        let foundType = category;
+        if (category === 'auto-detect') {
+            if (nameOrTitleOrObject.skillType) foundType = 'skill';
+            else if (nameOrTitleOrObject.hp !== undefined) foundType = 'character';
+            else foundType = 'item';
+        }
+        setQuickLoreContent({ entity: nameOrTitleOrObject, type: foundType });
+        setShowQuickLoreModal(true);
+        return; // Thoát luôn, không cần tìm kiếm nữa
+    }
+
+    const lowercasedName = nameOrTitleOrObject.trim().toLowerCase();
+    if (lowercasedName === '') return;
+
+    const findInArray = (arr, nameKeys = ['Name', 'title', 'name']) => {
+        if (!arr || !Array.isArray(arr)) return null;
+        return arr.find(item => {
+            if (!item) return false;
+            for (const key of nameKeys) {
+                if (item[key] && typeof item[key] === 'string' && item[key].trim().toLowerCase() === lowercasedName) {
+                    return true;
+                }
+            }
+            return false;
+        });
+    };
+    
+    let foundEntity = null;
+    let foundType = category;
+
+    // Tìm kiếm
+    if (category === 'characters' || category === 'auto-detect') {
+        foundEntity = findInArray(knowledge.characters, ['Name', 'name']);
+        if (foundEntity) foundType = 'character';
+    }
+    if (!foundEntity && (category === 'locations' || category === 'auto-detect')) {
+        foundEntity = findInArray(knowledge.locations, ['Name', 'name']);
+        if (foundEntity) foundType = 'location';
+    }
+    if (!foundEntity && (category === 'items' || category === 'auto-detect')) {
+        const allItems = [...(playerCharacter?.inventory || []), ...Object.values(playerCharacter?.equippedItems || {}).filter(Boolean)];
+        foundEntity = findInArray(allItems, ['Name', 'name']);
+        if (foundEntity) foundType = 'item';
+    }
+    if (!foundEntity && (category === 'skills' || category === 'auto-detect')) {
+        const allSkills = [...(playerCharacter?.learnedSkills || []), ...Object.values(playerCharacter?.equippedSkills || {}).filter(Boolean)];
+        foundEntity = findInArray(allSkills, ['Name', 'name', 'action_name']);
+        if (foundEntity) foundType = 'skill';
+    }
+    if (!foundEntity && (category === 'quests' || category === 'auto-detect')) {
+        foundEntity = findInArray(knowledge.quests, ['title']);
+        if (foundEntity) foundType = 'quest';
+    }
+    // Fallback tìm kiếm các loại lore/world item
+    if (!foundEntity && category === 'auto-detect') {
+         foundEntity = findInArray(knowledge.worldItems || [], ['Name', 'name']);
+         if (foundEntity) foundType = 'worldItem';
+    }
+    if (!foundEntity && category === 'auto-detect') {
+         foundEntity = findInArray(knowledge.loreSkills || [], ['Name', 'name']);
+         if (foundEntity) foundType = 'loreSkill';
+    }
+    if (!foundEntity && category === 'auto-detect') {
+         foundEntity = findInArray(knowledge.loreQuests || [], ['title']);
+         if (foundEntity) foundType = 'loreQuest';
+    }
+    if (!foundEntity && (category === 'characters' || category === 'auto-detect')) {
+         foundEntity = findInArray(knowledge.loreNpcs || [], ['Name', 'name']);
+         if (foundEntity) foundType = 'loreNpc';
+    }
+    if (!foundEntity && (category === 'locations' || category === 'auto-detect')) {
+         foundEntity = findInArray(knowledge.loreLocations || [], ['Name', 'name']);
+         if (foundEntity) foundType = 'loreLocation';
+    }
+
+    if (foundEntity) {
+        setQuickLoreContent({ entity: foundEntity, type: foundType });
+        setShowQuickLoreModal(true);
+    } else {
+        console.warn(`Không tìm thấy thông tin nhanh cho: '${nameOrTitleOrObject}'.`);
+        setModalMessage({ 
+            show: true, 
+            title: "Không Tìm Thấy", 
+            content: `Không tìm thấy thông tin chi tiết cho '${nameOrTitleOrObject}'.`, 
+            type: 'info' 
+        });
+    }
+}, [knowledge, playerCharacter]);
+
+
+const findContextualKnowledge = (playerInput, knowledge, playerCharacter) => {
+    // Bước 1: Tạo "Danh Sách Tra Cứu Toàn Năng"
+    const masterSearchList = [];
+    const lowercasedInput = playerInput.toLowerCase();
+
+    // Thêm tất cả các nhân vật (NPC, đồng hành)
+    (knowledge.characters || []).forEach(char => {
+        if (!char.isPlayer) { // Không cần thêm chính người chơi vào danh sách tìm kiếm
+            masterSearchList.push({ name: getDisplayName(char), type: 'NPC', data: char });
+        }
+    });
+
+    // Thêm tất cả các địa điểm
+    (knowledge.locations || []).forEach(loc => {
+        masterSearchList.push({ name: getDisplayName(loc), type: 'Địa điểm', data: loc });
+    });
+
+    // Thêm tất cả vật phẩm trong túi đồ
+    (playerCharacter.inventory || []).forEach(item => {
+        masterSearchList.push({ name: getDisplayName(item), type: 'Vật phẩm', data: item });
+    });
+
+    // Thêm tất cả kỹ năng đã học và trang bị
+    const allSkills = [...(playerCharacter.learnedSkills || []), ...Object.values(playerCharacter.equippedSkills || {}).filter(Boolean)];
+    allSkills.forEach(skill => {
+        masterSearchList.push({ name: getDisplayName(skill), type: 'Kỹ năng', data: skill });
+    });
+    
+    // Thêm các nhiệm vụ đang hoạt động
+    (knowledge.quests || []).filter(q => q.status === 'active').forEach(quest => {
+        masterSearchList.push({ name: getDisplayName(quest), type: 'Nhiệm vụ', data: quest });
+    });
+
+    // Bước 2: Sắp Xếp Danh Sách Thông Minh (Cực kỳ quan trọng!)
+    masterSearchList.sort((a, b) => b.name.length - a.name.length);
+
+    // Bước 3: Quét và Đối Chiếu
+    const foundEntities = [];
+    let tempInput = lowercasedInput;
+
+    masterSearchList.forEach(entity => {
+        const lowercasedName = entity.name.toLowerCase();
+        if (tempInput.includes(lowercasedName)) {
+            foundEntities.push(entity);
+            tempInput = tempInput.replace(lowercasedName, ''); 
+        }
+    });
+
+    return foundEntities;
+};
+
+const findLoreEntity = (name, knowledge, playerCharacter) => {
+    if (!name || !knowledge || !playerCharacter) return null;
+    const lowerCaseName = name.trim().toLowerCase();
+
+    const findInArray = (arr, nameKeys = ['Name', 'name', 'title']) => 
+        (arr || []).find(item => {
+            if (!item) return false;
+            const displayName = getDisplayName(item);
+            return displayName && displayName.trim().toLowerCase() === lowerCaseName;
+        });
+
+    let found = findInArray(knowledge.characters);
+    if (found) return { data: found, type: 'NPC' };
+
+    found = findInArray(knowledge.locations);
+    if (found) return { data: found, type: 'Địa điểm' };
+    
+    const allPlayerItems = [...(playerCharacter.inventory || []), ...Object.values(playerCharacter.equippedItems || {}).filter(Boolean)];
+    found = findInArray(allPlayerItems);
+    if (found) return { data: found, type: 'Vật phẩm' };
+
+    const allPlayerSkills = [...(playerCharacter.learnedSkills || []), ...Object.values(playerCharacter.equippedSkills || {}).filter(Boolean)];
+    found = findInArray(allPlayerSkills, ['Name', 'action_name']);
+    if (found) return { data: found, type: 'Kỹ năng' };
+
+    const activeQuests = (knowledge.quests || []).filter(q => q.status === 'active');
+    found = findInArray(activeQuests, ['title']);
+    if (found) return { data: found, type: 'Nhiệm vụ' };
+    
+    found = findInArray(knowledge.worldItems || []);
+    if (found) return { data: found, type: 'Vật phẩm' };
+
+    found = findInArray(knowledge.loreSkills || [], ['Name', 'name']);
+    if (found) return { data: found, type: 'Kỹ năng' };
+
+    found = findInArray(knowledge.loreQuests || [], ['title']);
+    if (found) return { data: found, type: 'Nhiệm vụ' };
+
+    found = findInArray(knowledge.loreNpcs || [], ['Name', 'name']);
+    if (found) return { data: found, type: 'NPC' };
+
+    found = findInArray(knowledge.loreLocations || [], ['Name', 'name']);
+    if (found) return { data: found, type: 'Địa điểm' };
+
+    return null;
+};
+
+const formatEntityForPrompt = (entityInfo) => {
+    if (!entityInfo || !entityInfo.data) return "";
+    const { type, data } = entityInfo;
+    let details = `- [${type}] ${data.Name || data.name || data.title}`;
+    if (data.description) details += `: "${data.description}"`;
+    else if (data.Backstory) details += `: "${data.Backstory}"`;
+
+    if (type === 'NPC') {
+        details += ` (Cấp ${data.level || 1}, Thái độ: ${data.Stance || 'Trung lập'}, Tính cách: ${data.Personality || 'Bình thường'}`;
+        if (data.Role) details += `, Thân phận: ${data.Role}`;
+        details += `)`;
+    } else if (type === 'Địa điểm') {
+        details += ` (Phân loại: ${data.category || 'Địa điểm'}, Cấp phả hệ: ${data.tier || 1})`;
+    } else if (type === 'Vật phẩm') {
+        details += ` (Loại: ${data.Type}, Phẩm chất: ${data.Rarity || 'Thường'}, Giá trị: ${data.Value || 0}`;
+        if (data.Stats) details += `, Chỉ số: ${data.Stats}`;
+        details += `)`;
+    } else if (type === 'Kỹ năng') {
+        details += ` (Loại: ${data.skillType === 'combat' ? 'Chiến đấu' : 'Phiêu lưu'}, Phẩm chất: ${data.Rarity || 'Thường'}`;
+        if (data.technicaldescription) details += `, Cơ chế: ${data.technicaldescription}`;
+        details += `)`;
+    }
+    return details;
+};
+
+
+const formatStoryText = useCallback((text) => {
+    if (text === null || text === undefined) {
+        return null;
+    }
+
+    const parseAndRenderText = (contentString) => {
+        if (!contentString || typeof contentString !== 'string') {
+            return contentString;
+        }
+
+        const loreRegex = /\*([^*]+)\*/g;
+        const parts = contentString.split(loreRegex);
+        
+        return parts.map((part, index) => {
+            if (index % 2 === 1) { 
+                const loreName = part;
+                const foundEntityInfo = findLoreEntity(loreName, knowledge, playerCharacter);
+                
+                if (foundEntityInfo) {
+                    // --- LOGIC MÀU SẮC THEO LOẠI THỰC THỂ ---
+                    let baseColorClass = "text-[#cda45e] border-[#cda45e]/40 drop-shadow-[0_0_8px_rgba(205,164,94,0.3)]"; // Mặc định: Vàng Đồng (Cho NPC)
+                    
+                    if (foundEntityInfo.type === 'location') {
+                        // Xanh Ngọc Bích cho Địa điểm
+                        baseColorClass = "text-[#5eead4] border-[#5eead4]/40 drop-shadow-[0_0_8px_rgba(94,234,212,0.2)]"; 
+                    } else if (['item', 'worldItem', 'skill', 'loreSkill', 'quest', 'loreQuest'].includes(foundEntityInfo.type)) {
+                        // Tím/Lam Nhạt cho Vật phẩm, Kỹ năng, Nhiệm vụ
+                        baseColorClass = "text-[#a5b4fc] border-[#a5b4fc]/40 drop-shadow-[0_0_8px_rgba(165,180,252,0.2)]"; 
+                    }
+
+                    return (
+                        <span
+                            key={`lore-${index}`}
+                            className={`${baseColorClass} hover:text-[#fef3c7] hover:border-[#fef3c7] hover:drop-shadow-[0_0_12px_rgba(254,243,199,0.6)] font-bold cursor-pointer transition-all duration-300 border-b border-dashed`}
+                            title={`Nhấn để tra cứu: ${loreName}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openQuickLoreModal('auto-detect', loreName);
+                            }}
+                        >
+                            {loreName}
+                        </span>
+                    );
+                } else {
+                    // CẤP 2: TÊN RIÊNG CHƯA BIẾT (Giữ màu Ngà sáng để hòa hợp tổng thể)
+                    return (
+                        <span 
+                            key={`unknown-${index}`} 
+                            className="font-bold text-[#fef3c7] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                        >
+                            {loreName}
+                        </span>
+                    );
+                }
+            }
+            return part; 
+        });
+    };
+
+    if (Array.isArray(text)) {
+        return text.map((segment, index) => {
+            if (segment.type === 'narrative') {
+                return (
+                    <div key={`narrative-${index}`} className="mb-3 leading-relaxed whitespace-pre-line">
+                        {parseAndRenderText(segment.content)}
+                    </div>
+                );
+            }
+            if (segment.type === 'dialogue') {
+                const cleanedDialogueContent = segment.content.replace(/\*/g, '');
+                return (
+                    <DialogueBubble
+                        key={`dialogue-${index}`}
+                        speaker={segment.speaker}
+                        content={cleanedDialogueContent}
+                        playerName={gameSettings.characterName}
+                        characters={knowledge.characters} 
+                        gameSettings={gameSettings}
+                        openQuickLoreModal={openQuickLoreModal}
+                    />
+                );
+            }
+            return null;
+        });
+    }
+
+    if (typeof text === 'string') {
+        const segments = parseStoryWithDialogue(text);
+        return segments.map((segment, index) => {
+             if (segment.type === 'narrative') {
+                return (
+                    <div key={`old-narrative-${index}`} className="mb-3 leading-relaxed whitespace-pre-line">
+                        {parseAndRenderText(segment.content)}
+                    </div>
+                );
+            }
+            if (segment.type === 'dialogue') {
+                 const cleanedDialogueContent = segment.content.replace(/\*/g, '');
+                return (
+                    <DialogueBubble
+                        key={`old-dialogue-${index}`}
+                        speaker={segment.speaker}
+                        content={cleanedDialogueContent}
+                        playerName={gameSettings.characterName}
+                        characters={knowledge.characters} 
+                        gameSettings={gameSettings}      
+                    />
+                );
+            }
+            return null;
+        });
+    }    
+    return null;
+
+}, [gameSettings.characterName, knowledge, playerCharacter, openQuickLoreModal]);
+
+  // Quyết định class theme và hình nền động dựa trên uiTheme
+  let themeClassName = '';
+  let appBackgroundImage = 'https://cdn.jsdelivr.net/gh/kimlove136-gif/anh-nen-game@8b5b91b445d90e04b37acde408f3fbea09cd8661/123%2012.png'; 
+  
+  if (gameSettings.uiTheme === 'PINK_FLOWER') {
+      themeClassName = 'theme-pink';
+      appBackgroundImage = 'https://cdn.jsdelivr.net/gh/kimlove136-gif/anh-nen-game@3bdedd1ee569cb59c3ce7a72410650753209f44e/pink-dream-star-layering-halo-heart-shaped-powerpoint-background_51658d9da2__960_540.avif'; 
+  } else if (gameSettings.uiTheme === 'HELL_RED') {
+      themeClassName = 'theme-hell';
+      appBackgroundImage = 'https://res.cloudinary.com/dptdcwltd/image/upload/v1778831506/background-den-do-tuyet-dep_025534446_sj8ui5.jpg'; 
+  } else if (gameSettings.uiTheme === 'CUSTOM') {
+      themeClassName = 'theme-custom';
+      // Lấy ảnh nền từ cấu hình tùy chỉnh, nếu không có thì để trống (nền đen)
+      appBackgroundImage = gameSettings.customThemeConfig?.bgImage || ''; 
+  }
+
+  return (
+    // Div 1: Đặt hình nền (Nằm ngoài JSX nên dùng // được)
+    <div 
+        className={`w-full min-h-screen bg-cover bg-center bg-fixed bg-no-repeat ${themeClassName}`}
+        style={{ 
+            backgroundImage: appBackgroundImage ? `url('${appBackgroundImage}')` : 'none', 
+            backgroundColor: '#0a0505',
+            '--text-scale': (gameSettings.textScale || 100) / 100 
+        }}
+    >
+    
+        {/* Div 2: Lớp phủ tối */}
+        <div className={`w-full min-h-screen ${gameSettings.uiTheme === 'PINK_FLOWER' ? 'bg-white/10' : gameSettings.uiTheme === 'HELL_RED' ? 'bg-black/60' : 'bg-black/40'}`}>
+
+            {/* THẺ AUDIO ẨN CHO NHẠC NỀN */}
+            <audio ref={audioRef} src={gameSettings.bgmUrl} loop />
+
+            {/* Nhúng Filter CSS bẻ khóa màu */}
+            <ThemeStyles theme={gameSettings.uiTheme} customConfig={gameSettings.customThemeConfig} />
+
+
+
+            {/* Thẻ style chứa toàn bộ CSS của ứng dụng, đặt ở đây để có hiệu lực toàn cục */}
+            <style>{`
+
+
+                /* 1. Nhập font từ Google Fonts (ĐÃ CẬP NHẬT) */
+                @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Protest+Revolution&display=swap');
+
+                /* 2. Đặt font mặc định cho toàn bộ game */
+                body, .font-theme-body {
+                    font-family: 'Noto Serif', serif;
+                }
+
+                /* 3. Định nghĩa một class riêng cho font tiêu đề (ĐÃ CẬP NHẬT) */
+                .font-theme-title {
+                    font-family: 'Protest Revolution', cursive;
+                }
+
+                /* CSS CO GIÃN CỠ CHỮ THEO BIẾN CỤC BỘ */
+                .scale-text-lg { font-size: calc(1.125rem * var(--text-scale, 1)); }
+                .scale-text-base { font-size: calc(1rem * var(--text-scale, 1)); }
+                .scale-text-sm { font-size: calc(0.875rem * var(--text-scale, 1)); }
+                .scale-text-xs { font-size: calc(0.75rem * var(--text-scale, 1)); }
+
+                
+                /* Định nghĩa các keyframes cho animation */
+                @keyframes pulse-trade {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); /* Màu xanh lá cây của nút Giao Dịch */
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(52, 211, 153, 0);
+            }
+            }
+            @keyframes bounce-dot {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-10px); }
+                }
+                .animate-bounce-dot {
+                    animation: bounce-dot 1.4s infinite ease-in-out;
+                }
+            @keyframes pulse-trade {
+                    0%, 100% {
+                        transform: scale(1);
+                        box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); /* Màu vàng của nút Giao Dịch */
+                    }
+                    50% {
+                        transform: scale(1.05);
+                        box-shadow: 0 0 0 10px rgba(234, 179, 8, 0);
+                    }
+                }
+                .animate-pulse-trade {
+                    animation: pulse-trade 2s infinite;
+                }
+
+            
+            .narration-text {
+                        text-shadow: none !important;
+                    }
+
+            animate-pulse-trade {
+            animation: pulse-trade 2s infinite;
+            }                
+                @keyframes fade-in {
+                    from { opacity: 0; transform: scale(0.95); }
+                    to { opacity: 1; transform: scale(1); }
+                }
+                @keyframes fade-in-up {
+                    from { opacity: 0; transform: translateY(30px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fade-in-up {
+                    animation: fade-in-up 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+                }
+                @keyframes bounce-in {
+                    0% { transform: scale(0.1); opacity: 0; }
+                    60% { transform: scale(1.2); opacity: 1; }
+                    100% { transform: scale(1); }
+                }
+                @keyframes shadow-pulse-red {
+                    0% { box-shadow: 0 0 10px rgba(255, 0, 0, 0.5), 0 0 20px rgba(255, 0, 0, 0.3); }
+                    50% { box-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.6); }
+                    100% { box-shadow: 0 0 10px rgba(255, 0, 0, 0.5), 0 0 20px rgba(255, 0, 0, 0.3); }
+                }
+                @keyframes text-glow {
+                    0%, 100% { text-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(192, 132, 252, 0.5), 0 0 30px rgba(251, 146, 60, 0.4); }
+                    50% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(192, 132, 252, 0.8), 0 0 60px rgba(251, 146, 60, 0.7); }
+                }
+                .animate-fade-in {
+                    animation: fade-in 0.3s ease-out forwards;
+                }
+                .animate-bounce-in {
+                    animation: bounce-in 0.8s forwards;
+                }
+                .shadow-red-glow {
+                    animation: shadow-pulse-red 2s infinite alternate;
+                }
+                .animate-text-glow {
+                    animation: text-glow 5s ease-in-out infinite;
+                }
+                /* --- HIỆU ỨNG TRƯỢT LÊN CỦA HTAB --- */
+                @keyframes slideUpHtab {
+                    0% { transform: translate(-50%, 120%); opacity: 0; filter: brightness(2) blur(10px); }
+                    100% { transform: translate(-50%, 0); opacity: 1; filter: brightness(1) blur(0); }
+                }
+                .animate-htab-slideup {
+                    animation: slideUpHtab 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+                }
+                
+                @keyframes pulseHtabGlow {
+                    0%, 100% { filter: drop-shadow(0 0 15px var(--glow-color, rgba(165,180,252,0.5))); }
+                    50% { filter: drop-shadow(0 0 30px var(--glow-color, rgba(165,180,252,0.8))) brightness(1.1); }
+                }
+                .animate-htab-glow {
+                    animation: pulseHtabGlow 2.5s infinite ease-in-out;
+                }
+                /* Scrollbar styling */
+                .scrollbar-thin {
+                    scrollbar-width: thin;
+                    scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
+                }
+                ::-webkit-scrollbar {
+                    width: 6px;
+                    height: 6px;
+                }
+                ::-webkit-scrollbar-track {
+                    background: #0a0f0a; 
+                    border-radius: 4px;
+                }
+                ::-webkit-scrollbar-thumb {
+                    background-color: #cda45e; 
+                    border-radius: 4px;
+                }
+                ::-webkit-scrollbar-thumb:hover {
+                    background-color: #e8d3a1; 
+                }
+
+                /* Hỗ trợ Firefox */
+                * {
+                    scrollbar-width: thin;
+                    scrollbar-color: #cda45e #0a0f0a;
+                }
+
+                /* Ẩn các nút tăng/giảm mặc định của trình duyệt cho input number */
+                input[type=number]::-webkit-inner-spin-button, 
+                input[type=number]::-webkit-outer-spin-button { 
+                    -webkit-appearance: none; 
+                    margin: 0; 
+                }
+                input[type=number] {
+                    -moz-appearance: textfield;
+                }
+                /* Scrollbar colors */
+                .scrollbar-thumb-purple-500 { --scrollbar-thumb-color: #8B5CF6; }
+                .scrollbar-track-gray-700 { --scrollbar-track-color: #374151; }
+                .scrollbar-thumb-red-500 { --scrollbar-thumb-color: #EF4444; }
+                .scrollbar-track-red-700 { --scrollbar-track-color: #B91C1C; }
+                .scrollbar-thumb-blue-500 { --scrollbar-thumb-color: #3B82F6; }
+                .scrollbar-track-blue-700 { --scrollbar-track-color: #1D4ED8; }
+                .scrollbar-thumb-teal-500 { --scrollbar-thumb-color: #14B8A6; }
+                .scrollbar-thumb-pink-500 { --scrollbar-thumb-color: #EC4899; }
+                .scrollbar-thumb-orange-500 { --scrollbar-thumb-color: #F97316; }
+                .scrollbar-thumb-lime-500 { --scrollbar-thumb-color: #84cc16; }
+                .scrollbar-thumb-indigo-500 { --scrollbar-thumb-color: #6366f1; }
+                
+                /* ĐỒNG BỘ THANH CUỘN GIAO DIỆN GAME (VÀNG/RÊU) */
+                .scrollbar-thumb-\[\#cda45e\] { --scrollbar-thumb-color: #cda45e; }
+                .scrollbar-thumb-\[\#8b1515\] { --scrollbar-thumb-color: #8b1515; }
+                .scrollbar-track-\[\#0a0f0a\] { --scrollbar-track-color: #0a0f0a; }
+                .scrollbar-track-transparent { --scrollbar-track-color: transparent; }
+                @keyframes dot-pulse {
+                    0%, 100% { opacity: 0.2; transform: scale(0.9); }
+                    50% { opacity: 1; transform: scale(1); }
+                }
+                .animate-dot-pulse {
+                    animation: dot-pulse 1.5s infinite ease-in-out;
+                    display: inline-block;
+                    width: 0.5em; 
+                    text-align: center;
+                }
+                .custom-scrollbar-gold::-webkit-scrollbar {
+                    width: 8px; /* Độ rộng của thanh cuộn */
+                }
+                .custom-scrollbar-gold::-webkit-scrollbar-track {
+                    background: transparent; /* Đường ray trong suốt */
+                }
+                .custom-scrollbar-gold::-webkit-scrollbar-thumb {
+                    background-color: #D4AF37; /* Màu vàng kim loại sang trọng */
+                    border-radius: 20px; /* Bo tròn hoàn toàn */
+                    border: 2px solid rgb(17 24 39); /* Tạo một đường viền nhỏ màu nền, giúp thanh cuộn trông tinh tế hơn */
+                }
+                .custom-scrollbar-gold::-webkit-scrollbar-thumb:hover {
+                    background-color: #FFD700; /* Màu vàng sáng hơn khi di chuột qua */
+                }
+                @keyframes htab-enter {
+                0% { transform: translate(-50%, 80%) scale(0.7); opacity: 0; filter: brightness(2) blur(10px); }
+                100% { transform: translate(-50%, 0) scale(1); opacity: 1; filter: brightness(1) blur(0); }
+                }
+                @keyframes htab-exit {
+                0% { transform: translate(-50%, 0) scale(1); opacity: 1; filter: brightness(1) blur(0); }
+                100% { transform: translate(-50%, 80%) scale(0.85); opacity: 0; filter: brightness(3) blur(15px); }
+                }
+                @keyframes bubble-enter {
+                    0% { transform: translate(-50%, -30px) scale(0.95); opacity: 0; }
+                    100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+                }
+                @keyframes bubble-exit {
+                    0% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+                    100% { transform: translate(-50%, -20px) scale(0.95); opacity: 0; }
+                }
+                .htab-avatar-enter {
+                    animation: htab-enter 0.9s cubic-bezier(0.18, 0.89, 0.32, 1.1) forwards;
+                }
+                .htab-avatar-exit {
+                    animation: htab-exit 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+                }
+                .htab-bubble-enter {
+                    animation: bubble-enter 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.15) forwards;
+                }
+                .htab-bubble-exit {
+                    animation: bubble-exit 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+                }
+
+            /* Ẩn các nút tăng/giảm mặc định của trình duyệt cho input number */
+                            input[type=number]::-webkit-inner-spin-button, 
+                            input[type=number]::-webkit-outer-spin-button { 
+                            -webkit-appearance: none; 
+                            margin: 0; 
+                            }
+                            input[type=number] {
+                            -moz-appearance: textfield;
+                            }
+
+            `}</style>
+            
+            {/* THAY ĐỔI 2: InitializationOverlay giờ đây hoạt động như một Modal */}
+
+            {/* Div 3: Container chịu trách nhiệm hiển thị và CĂN GIỮA nội dung */}
+             <div className={`flex flex-col ${currentScreen === 'gameplay' ? 'w-full h-screen' : 'items-center justify-center min-h-screen p-4 sm:p-6'} font-theme-body text-white`}>
+                
+                {/* Các thẻ input ẩn */}
+                <input type="file" ref={fileInputRef} onChange={handleLoadGame} accept=".json" className="hidden" />
+                <input type="file" ref={setupFileInputRef} onChange={handleLoadSetupFromFile} accept=".json" className="hidden" />
+
+            <>
+                    {currentScreen === 'initial' && (
+                        <InitialScreen
+                            setCurrentScreen={setCurrentScreen}
+                            setShowLoadGameModal={setShowLoadGameModal}
+                            savedGames={savedGames}
+                            apiKeyStatus={apiKeyStatus}
+                            userId={userId}
+                            setInputApiKey={setInputApiKey}
+                            apiKey={apiKey} 
+                            setShowApiModal={setShowApiModal}
+                            apiMode={apiMode}
+                            setShowUpdateLogModal={setShowUpdateLogModal}
+                            fileInputRef={fileInputRef} 
+                            uiTheme={gameSettings.uiTheme}
+                            isValidatedVip={isValidatedVip}
+                            isVerifyingVip={isVerifyingVip}
+                            onVerifyVipKey={(key) => handleVerifyVipKey(key, false)}
+                        />
+                    )}
+
+                    {currentScreen === 'gameplay' && (
+                            <GameplayScreen
+                                allowUnexpectedEvent={allowUnexpectedEvent}
+                                setAllowUnexpectedEvent={setAllowUnexpectedEvent}
+                                setGameSettings={setGameSettings}
+                                currentPlayStyle={gameSettings.playStyle}
+                                gameMode={gameMode}
+                                goHome={goHome}
+                                gameSettings={gameSettings}
+                                restartGame={restartGame}
+                                storyHistory={storyHistory}
+                                setStoryHistory={setStoryHistory}
+                                handleActionRequest={handleActionRequest}
+                                isLoading={isLoading} 
+                                currentStory={currentStory}
+                                choices={choices}
+                                handleChoice={handleChoice}
+                                formatStoryText={formatStoryText} 
+                                customActionInput={customActionInput}
+                                setCustomActionInput={setCustomActionInput}
+                                handleCustomAction={handleCustomAction}
+                                setShowCharacterInfoModal={setShowCharacterInfoModal}
+                                isProcessingAction={isProcessingAction}
+                                setIsProcessingAction={setIsProcessingAction}
+                                handleGenerateSuggestedActions={handleGenerateSuggestedActions}
+                                isGeneratingSuggestedActions={isGeneratingSuggestedActions}
+                                handleSaveGame={handleSaveGame}
+                                openCompanionInfoModal={openCompanionInfoModal}
+                                currentTurn={currentTurn}
+                                setShowCraftingModal={setShowCraftingModal}
+                                setShowSuggestedActionsModal={setShowSuggestedActionsModal}
+                                setShowCharacterEquipModal={setShowCharacterEquipModal}
+                                setShowInventoryModal={setShowInventoryModal}
+                                getRealmInfoFromLevel={getRealmInfoFromLevel}
+                                setShowQuickReferenceModal={setShowQuickReferenceModal}
+                                knowledge={knowledge} 
+                                visibleStoryCount={visibleStoryCount}
+                                loadMoreStory={loadMoreStory}
+                                messagesEndRef={messagesEndRef}
+                                setCharacterInfoInitialTab={setCharacterInfoInitialTab}
+                                setShowSkillManagementModal={setShowSkillManagementModal}
+                                formatTimeOfDay={formatTimeOfDay}
+                                setShowTradeModal={setShowTradeModal}
+                                combatTargetingState={combatTargetingState}
+                                setCombatTargetingState={setCombatTargetingState}
+                                activeCombatLoop={activeCombatLoop}
+                                combatEndSummary={combatEndSummary}
+                                finalizeCombatEnd={finalizeCombatEnd}
+                                openQuickLoreModal={openQuickLoreModal}
+                                companionCommandInput={companionCommandInput}
+                                setCompanionCommandInput={setCompanionCommandInput}
+                                fileInputRef={fileInputRef} 
+                                combatLog={combatLog}
+                                setShowCombatStatsModal={setShowCombatStatsModal} 
+                                handleTargetSelection={handleTargetSelection}
+                                handleForceExitStuckCombat={handleForceExitStuckCombat}
+                                setModalMessage={setModalMessage}
+                                combatUIState={combatUIState}
+                                setCombatUIState={setCombatUIState}
+                                processPlayerAction={processPlayerAction}
+                                setChoices={setChoices}
+                                setShowHandbookModal={setShowHandbookModal}
+                                showFunctionsModal={showFunctionsModal}
+                                setShowFunctionsModal={setShowFunctionsModal}
+                                showInfoModal={showInfoModal}
+                                setShowInfoModal={setShowInfoModal}
+                                showInteractionPanel={showInteractionPanel}
+                                setShowInteractionPanel={setShowInteractionPanel}
+                                handleTrackQuest={handleTrackQuest}
+                                activeTrade={activeTrade}
+                                saveGameProgress={saveGameProgress}
+                                currentGameId={currentGameId}
+                                setShowLoadGameModal={setShowLoadGameModal}
+                                handleClearImageCache={handleClearImageCache}
+                                onTogglePlayStyle={handleTogglePlayStyle}
+                                handleDeleteStoryItem={handleDeleteStoryItem}
+                                combatEnvironmentImage={combatEnvironmentImage}
+                                activeAnimation={activeAnimation}
+                                handleTogglePartyMember={handleTogglePartyMember}
+                                onSetTheme={handleSetTheme}
+                                bgmUrl={gameSettings.bgmUrl}
+                                bgmVolume={gameSettings.bgmVolume}
+                                isPlayingBgm={isPlayingBgm}
+                                onBgmUrlChange={handleBgmUrlChange}
+                                onBgmVolumeChange={handleBgmVolumeChange}
+                                onToggleBgm={toggleBgm}
+                                onOpenCacheManager={() => setShowLocalCacheManager(true)}
+                                onStartSandbox={handleStartSandboxCombat} 
+                                handleAwakenHtab={handleAwakenHtab} 
+                                isHtabChatActive={isHtabChatActive}
+                                setIsHtabChatActive={setIsHtabChatActive}
+                                currentHtabDialogue={currentHtabDialogue}
+                                handleHtabChat={handleHtabChat}
+                                htabExitPending={htabExitPending}
+                                htabPendingResumeData={htabPendingResumeData}
+                                resumeWorldFromHtab={resumeWorldFromHtab}
+                                showHtabInfoModal={showHtabInfoModal}
+                                setShowHtabInfoModal={setShowHtabInfoModal}
+                            />
+                    )}
+                </>
+                         
+                <div style={{ display: currentScreen === 'setup' ? 'block' : 'none' }}>
+                    <GameSetupScreen
+                        setupMode={setupMode} 
+                        setSetupMode={setSetupMode}
+                        goHome={goHome}
+                        gameSettings={gameSettings}
+                        handleGenerateSingleField={handleGenerateSingleField} 
+                        handleFillAllMissingFields={handleFillAllMissingFields} 
+                        handleInputChange={handleInputChange}
+                        initializeGame={initializeGame}
+                        isLoading={isLoading}
+                        handleGenerate={handleGenerate}
+                        isGenerating={isGenerating}
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        handleSaveSetup={handleSaveSetup}                 
+                        setupFileInputRef={setupFileInputRef}
+                        impromptuInput={impromptuInput}
+                        setImpromptuInput={setImpromptuInput}
+                        handleGenerateImpromptu={handleGenerateImpromptu}
+                        isGeneratingImpromptu={isGeneratingImpromptu}
+                        impromptuCharInput={impromptuCharInput}
+                        populateSettingsFromFanFic={populateSettingsFromFanFic}
+                        setImpromptuCharInput={setImpromptuCharInput}
+                        handleGenerateImpromptuCharacter={handleGenerateImpromptuCharacter}
+                        isGeneratingImpromptuChar={isGeneratingImpromptuChar}
+                        addInitialTrait={addInitialTrait}
+                        removeInitialTrait={removeInitialTrait}
+                        handleInitialTraitChange={handleInitialTraitChange}
+                        addInitialWorldElement={addInitialWorldElement}
+                        removeInitialWorldElement={removeInitialWorldElement}
+                        handleInitialElementChange={handleInitialElementChange}
+                        companionCommandInput={companionCommandInput} //
+                        setCompanionCommandInput={setCompanionCommandInput} //
+                        setShowHandbookModal={setShowHandbookModal}
+
+                    />
+                </div>
+
+            {startGameInitialization && (
+                <InitializationOverlay 
+                    steps={initializationSteps} 
+                    characterName={gameSettings.characterName}
+                    backgroundImageUrl="https://cdn.jsdelivr.net/gh/kimlove136-gif/anh-nen-game@589f1cca976efc2fa5d47891a81fccf232231650/31231%20(1).png"
+                    isProcessing={isLoading}
+                    onContinue={handleStartGameplay}
+                />
+            )}
+            {isHtabAwakening && (
+                <InitializationOverlay 
+                    steps={htabAwakeningSteps} 
+                    characterName={gameSettings.characterName}
+                    backgroundImageUrl="" 
+                    isProcessing={true}
+                    onContinue={() => {}} 
+                />
+            )}
+        <SaveSlotModal
+            show={showSaveSlotModal}
+            onClose={() => setShowSaveSlotModal(false)}
+            onConfirm={handleSlotSelection}
+            currentTurn={currentTurn}
+            savedGames={savedGames} 
+        />
+        <VipInputModal 
+            show={showVipInputModal}
+            onClose={() => setShowVipInputModal(false)}
+            isVerifying={isVerifyingVip}
+            onConfirm={(key) => handleVerifyVipKey(key, true)}
+        />
+
+        {showApiModal && (
+            <ApiSetupModal
+              inputApiKey={inputApiKey}
+              setInputApiKey={setInputApiKey}
+              apiKeyStatus={apiKeyStatus}
+              saveApiKey={saveApiKey}
+              testApiKey={testApiKey}
+              isLoading={isLoading} 
+              setShowApiModal={setShowApiModal}
+              apiKey={apiKey} 
+              setApiKeyStatus={setApiKeyStatus}
+              apiMode={apiMode}
+              setApiMode={setApiMode}
+              setModalMessage={setModalMessage}
+              playerCharacter={playerCharacter} 
+            />
+        )}
+
+       {showUpdateLogModal && ( 
+            <UpdateLogModal
+                show={showUpdateLogModal}
+                onClose={() => setShowUpdateLogModal(false)}
+                changelog={changelogData}
+                playerCharacter={playerCharacter} 
+            />
+        )}
+        {showTradeModal && (
+            <TradeModal
+                show={showTradeModal} 
+                onClose={() => setShowTradeModal(false)} 
+                playerInventory={playerCharacter.inventory}
+                activeTrade={activeTrade}
+                setActiveTrade={setActiveTrade}
+                handleConfirmSell={handleConfirmSell}
+                handleConfirmBuy={handleConfirmBuy} 
+                gameSettings={gameSettings}
+                knowledge={knowledge}
+                playerCharacter={playerCharacter}
+
+            />
+        )}
+      {showLoadGameModal && (
+        <LoadGameModal
+            savedGames={savedGames}
+            loadGame={loadGame}
+            setShowLoadGameModal={setShowLoadGameModal}
+            setConfirmationModal={setConfirmationModal}
+            setModalMessage={setModalMessage}
+            setSavedGames={setSavedGames}
+            cloudVipKey={cloudVipKey}
+        />
+        )}
+
+      {showCharacterInfoModal && (
+        <CharacterInfoModal
+            show={showCharacterInfoModal}
+            onClose={() => setShowCharacterInfoModal(false)}
+            characterId={selectedCharacterIdForModal} 
+            knowledge={knowledge}
+            initialTab={characterInfoInitialTab}
+            setknowledge={setknowledge}
+            gameSettings={gameSettings}
+            handleAllocateAp={handleAllocateAp}
+            handleUserUploadNpcAvatar={handleUserUploadNpcAvatar}
+            handleUserUploadPlayerAvatar={handleUserUploadPlayerAvatar}
+            handleTrackQuest={handleTrackQuest}
+            handleDebugUpdateCharacter={handleDebugUpdateCharacter}
+            setModalMessage={setModalMessage}
+            handleUpdateCharacterImages={handleUpdateCharacterImages} 
+            handleRegenerateSingleSprite={handleRegenerateSingleSprite}
+            handleAutoGenerateAvatar={handleAutoGenerateAvatar} 
+            generatingAvatars={generatingAvatars} 
+            generatingSprites={generatingSprites} 
+        />
+      )}
+{showQuickLoreModal && (
+    <QuickLoreModal
+        loreItem={quickLoreContent}
+        show={showQuickLoreModal}
+        onClose={() => setShowQuickLoreModal(false)}
+        calculateFinalStats={calculateFinalStats} 
+        knowledge={knowledge} 
+        getRealmInfoFromLevel={getRealmInfoFromLevel}
+        handleUserUploadNpcAvatar={handleUserUploadNpcAvatar}
+        handleUserUploadPlayerAvatar={handleUserUploadPlayerAvatar}
+        handleAutoGenerateAvatar={handleAutoGenerateAvatar}
+        handleAppraiseNpc={handleAppraiseNpc}
+        generatingAvatars={generatingAvatars}
+        handleRecruitCompanion={handleRecruitCompanion}
+        handleSongTu={handleSongTu}
+        isProcessingAction={isProcessingAction}
+    />
+)}
+      <SuggestionsModal
+        show={showSuggestionsModal.show}
+        title={showSuggestionsModal.title || "✨ Gợi Ý"}
+        suggestions={showSuggestionsModal.suggestions}
+        isLoading={showSuggestionsModal.isLoading}
+        onSelect={(suggestion) => {
+            if (showSuggestionsModal.fieldType === 'characterGoal') {
+                setGameSettings(prev => ({ ...prev, characterGoal: suggestion }));
+            } else if (showSuggestionsModal.fieldType) { 
+                setGameSettings(prev => ({ ...prev, [showSuggestionsModal.fieldType]: suggestion }));
+            }
+        }}
+        onClose={() => setShowSuggestionsModal({ show: false, fieldType: null, suggestions: [], isLoading: false, title: '' })}
+      />
+       <SuggestedActionsModal
+        show={showSuggestedActionsModal}
+        suggestions={suggestedActionsList}
+        isLoading={isGeneratingSuggestedActions}
+        onSelect={(action) => {
+            setCustomActionInput(action);
+            setShowSuggestedActionsModal(false);
+        }}
+        onClose={() => setShowSuggestedActionsModal(false)}
+      />
+        <CraftingModal
+            show={showCraftingModal}
+            onClose={() => setShowCraftingModal(false)}
+            inventory={playerCharacter.inventory}
+            handleStartFusion={handleStartFusion}
+            isProcessingAction={isProcessingAction}
+            playerCharacter={playerCharacter}
+            gameSettings={gameSettings}
+        />
+            <CharacterEquipModal
+                show={showCharacterEquipModal}
+                onClose={() => setShowCharacterEquipModal(false)}
+                knowledge={knowledge} //
+                gameSettings={gameSettings} // 
+                handleEquipItem={handleEquipItem}
+                handleUnequipItem={handleUnequipItem}
+                setModalMessage={setModalMessage} 
+
+            />
+            {showCombatStatsModal && (
+                <CombatStatsModal
+                    show={showCombatStatsModal}
+                    onClose={() => setShowCombatStatsModal(false)}
+                    combatants={activeCombatLoop ? activeCombatLoop.allCombatants : []}
+                    logEntries={combatLog}
+                />
+            )}
+    <LocalCacheManagerModal
+        show={showLocalCacheManager}
+        onClose={() => setShowLocalCacheManager(false)}
+        savedGames={savedGames}
+        currentGameId={currentGameId}
+        setModalMessage={setModalMessage}
+        setknowledge={setknowledge}
+    />
+    <QuickReferenceModal
+    show={showQuickReferenceModal}
+    onClose={() => setShowQuickReferenceModal(false)}
+    knowledge={knowledge}
+    onSelectForChat={(itemName) => setCustomActionInput(prevInput => `${prevInput ? ' ' : ''}${itemName}`)}
+    playerCharacter={playerCharacter}
+    calculateFinalStats={calculateFinalStats} 
+    openQuickLoreModal={openQuickLoreModal}
+    handleDeleteNpc={handleDeleteNpc}
+    handleCreateNpc={handleCreateNpc}
+    setConfirmationModal={setConfirmationModal}
+    handleRenameNpc={handleRenameNpc}
+    handleCreateLocation={handleCreateLocation}
+    handleUpdateLocation={handleUpdateLocation}
+    handleDeleteLocation={handleDeleteLocation}
+    />
+    <QuestNotificationModal
+        show={questNotification.show}
+        quest={questNotification.quest}
+        onClose={() => setQuestNotification({ show: false, quest: null })}
+      />
+
+      <MessageModal
+        show={modalMessage.show}
+        title={modalMessage.title}
+        content={modalMessage.content}
+        type={modalMessage.type}
+        onClose={() => setModalMessage({ show: false, title: '', content: '', type: 'info' })}
+      />
+    <ConfirmationModal
+        show={confirmationModal.show}
+        title={confirmationModal.title}
+        content={confirmationModal.content}
+        onConfirm={confirmationModal.onConfirm}
+        onCancel={confirmationModal.onCancel}
+        confirmText={confirmationModal.confirmText}
+        cancelText={confirmationModal.cancelText}
+        setConfirmationModal={setConfirmationModal}
+      />
+      {autosaveStatus && (
+          <div className={`fixed top-4 right-4 z-[9999] bg-[#101a10]/95 border px-4 py-2 text-xs font-bold tracking-widest uppercase shadow-lg flex items-center gap-2 ${autosaveStatus === 'error' ? 'border-red-500' : 'border-[#cda45e]'}`}>
+              {autosaveStatus === 'saving' ? (
+                  <>
+                      <div className="w-3.5 h-3.5 border-2 border-t-transparent border-[#cda45e] rounded-full animate-spin"></div>
+                      <span className="text-[#e8d3a1]">Đang ghi nhớ...</span>
+                  </>
+              ) : autosaveStatus === 'error' ? (
+                  <>
+                      <span className="text-red-500">✗</span>
+                      <span className="text-red-500">Lỗi tự động lưu (Dung lượng đầy)</span>
+                  </>
+              ) : (
+                  <>
+                      <span className="text-green-400">✓</span>
+                      <span className="text-green-400">Đã tự động lưu</span>
+                  </>
+              )}
+          </div>
+      )}
+      <GameOverModal 
+          show={showGameOverModal}
+          onRespawn={handleRespawn}
+          onLoadGame={() => {
+              setShowGameOverModal(false);
+              setShowLoadGameModal(true);
+          }}
+      />
+            {showHandbookModal && (
+                    <HandbookModal
+                        show={showHandbookModal}
+                        onClose={() => setShowHandbookModal(false)}
+                    />
+                )}
+                
+            {showHtabInfoModal && (
+                <HtabInfoModal
+                    show={showHtabInfoModal}
+                    onClose={() => setShowHtabInfoModal(false)}
+                    knowledge={knowledge}
+                    setknowledge={setknowledge}
+                    gameSettings={gameSettings}
+                    apiMode={apiMode}
+                    apiKey={apiKey}
+                    setModalMessage={setModalMessage}
+                    isProcessingAction={isProcessingAction}
+                    setIsProcessingAction={setIsProcessingAction}
+                    onHtabGacha={handleHtabGacha}
+                    onHtabBlessing={handleHtabBlessing}
+                    onHtabDonate={handleHtabDonate}
+                    onStartHtabConversation={async () => {
+                        const htabObj = knowledge.htab || {};
+                        const currentLvl = htabObj.level || 1;
+                        const maxSta = HTAB_MAX_STA[currentLvl] || 100;
+                        const curEnergy = htabObj.currentEnergy ?? maxSta;
+                        const affinity = htabObj.affinity || 0;
+
+                        if (curEnergy < 40) {
+                            setModalMessage({ show: true, title: "Kiệt Sức", content: `Hệ thống cần đạt trên 40 năng lượng để thực hiện liên kết Gọi Dậy (Hiện tại: ${curEnergy}/${maxSta} STA). Hãy Cung Phụng thêm để bồi dưỡng.`, type: "error" });
+                            return;
+                        }
+
+                        const successRate = affinity;
+                        const dice = Math.random() * 100;
+                        const isSuccess = dice < successRate;
+
+                        setIsProcessingAction(true);
+                        if (isSuccess) {
+                            // Sao lưu lựa chọn dã ngoại thực tại trước khi vào kết nối
+                            setBackupChoices(choices);
+                            setBackupCustomActionInput(customActionInput);
+
+                            setknowledge(prev => {
+                                const newK = JSON.parse(JSON.stringify(prev));
+                                if (newK.htab) {
+                                    newK.htab.currentEnergy = Math.max(0, curEnergy - 30);
+                                }
+                                return newK;
+                            });
+
+                            setIsHtabChatActive(true);
+                            setModalMessage({ show: true, title: "Gọi Dậy Thành Công", content: `Đã kết nối Thức Hải thành công! Đang đánh thức linh thức của Hệ thống...`, type: "success" });
+
+                            const lastStoryItem = storyHistory.filter(item => item.type === 'story').pop()?.content || "Ngươi đang ở giữa hành trình thám hiểm.";
+                            const lastStoryText = typeof lastStoryItem === 'string' ? lastStoryItem : JSON.stringify(lastStoryItem);
+                            
+                            await triggerSystemActiveAppearance('summon', lastStoryText);
+                        } else {
+                            setknowledge(prev => {
+                                const newK = JSON.parse(JSON.stringify(prev));
+                                if (newK.htab) {
+                                    newK.htab.currentEnergy = Math.max(0, curEnergy - 10);
+                                }
+                                return newK;
+                            });
+                            setModalMessage({ show: true, title: "Gọi Dậy Thất Bại", content: `Linh ý dao động bất ổn, kết nối Thức Hải bất thành! (Tiêu tốn 10 năng lượng của Hệ thống).`, type: "error" });
+                        }
+                        setIsProcessingAction(false);
+                    }}
+                    adventureTurnCount={adventureTurnCount}
+                />
+            )}
+
+                <IntroModal
+                    show={showIntroModal}
+                    onClose={() => setShowIntroModal(false)}
+                    characterName={gameSettings.characterName}
+                />
+                <VipWelcomeModal
+                    show={showVipWelcomeModal}
+                    ownerName={vipOwnerName}
+                    onClose={() => setShowVipWelcomeModal(false)}
+                />
+                {showSkillManagementModal && (
+                        <SkillManagementModal
+                            show={showSkillManagementModal}
+                            onClose={() => setShowSkillManagementModal(false)}
+                            knowledge={knowledge}
+                            gameSettings={gameSettings} 
+                            handleEquipSkill={handleEquipSkill}
+                            handleUnequipSkill={handleUnequipSkill}
+                            handleForgetSkill={handleForgetSkill}
+                            onGenerateVfxImage={handleGenerateVfxImage}
+                            onCustomSkillCreate={(newSkill, charId, sacrificeSkillId) => {
+                            setknowledge(prev => {
+                                const newK = JSON.parse(JSON.stringify(prev));
+                                const char = newK.characters.find(c => c.id === charId);
+                                if (char) {
+                                    if (sacrificeSkillId === 'basic_attack') {
+                                        char.basicAttackVfx = newSkill.visual_effects || newSkill.effects?.[0]?.action?.visual_effects;
+                                    } else {
+                                        if (!char.learnedSkills) char.learnedSkills = [];
+                                        if (sacrificeSkillId) {
+                                            char.learnedSkills = char.learnedSkills.filter(s => s.id !== sacrificeSkillId);
+                                        }
+                                        char.learnedSkills.push(newSkill);
+                                    }
+                                }
+                                return newK;
+                            });
+                            if (sacrificeSkillId === 'basic_attack') {
+                                setModalMessage({ show: true, title: "Tùy Chỉnh Thành Công", content: `Đã cập nhật hiệu ứng hình ảnh (VFX) cho đòn Đánh Thường!`, type: "success" });
+                            } else {
+                                setModalMessage({ show: true, title: "Lĩnh Ngộ Kỹ Năng", content: `Tuyệt kỹ [${newSkill.Name}] đã được đưa vào kho tiềm thức!`, type: "success" });
+                            }
+                        }}
+                        />
+                    )}
+
+            <QuantitySelector 
+                data={quantitySelector}
+                onConfirm={quantitySelector.onConfirm}
+                onCancel={quantitySelector.onCancel}
+            />
+
+            <InventoryModal
+                        show={showInventoryModal}
+                        onClose={() => setShowInventoryModal(false)}
+                        playerCharacter={playerCharacter} 
+                        handleDiscardItem={handleDiscardItem}
+                        calculateMaxCarryWeight={calculateMaxCarryWeight}
+                        calculateCurrentWeight={calculateCurrentWeight}
+                        gameSettings={gameSettings} 
+                    />
+            </div>
+        </div>
+    </div>
+  );
+};
+
+
+export default App;
